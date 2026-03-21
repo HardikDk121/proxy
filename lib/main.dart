@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import 'package:proxy/themes/theme.dart';
 import 'pie.dart';
+import 'routes/app_routes.dart';
+import 'routes/route_generator.dart';
+ 
 void main() {
+  RouteGenerator.registerRoutes();
   runApp(const ProxyApp());
 }
 
@@ -12,10 +16,15 @@ class ProxyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Proxy',
-      debugShowCheckedModeBanner: false, // Hides the annoying debug banner
-      theme: proxyTheme,                 // <--- THIS IS THE MAGIC LINE
-      home: const DashboardScreen(),
-      
+      debugShowCheckedModeBanner: false, 
+      theme: proxyTheme,                 
+      initialRoute: AppRoutes.splash,
+ 
+      // ── Route generation ─────────────────────────────────────────────────
+      onGenerateRoute: RouteGenerator.onGenerateRoute,
+ 
+      // ── Fallback for truly unknown routes ────────────────────────────────
+      onUnknownRoute: RouteGenerator.onUnknownRoute,
     );
   }
 }

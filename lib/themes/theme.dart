@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 // The official "Proxy" Desaturated Pastel Theme
 final ThemeData proxyTheme = ThemeData(
-  brightness: Brightness.dark, // Forces dark mode text behaviors
+  brightness: Brightness.dark,
+  useMaterial3: true, // Forces dark mode text behaviors
   
   // 1. Backgrounds
   scaffoldBackgroundColor: const Color(0xFF121212), // Deep Charcoal
