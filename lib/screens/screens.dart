@@ -24,20 +24,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            _NavButton(
-              label: 'Go to Settings',
-              icon: Icons.settings,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
-            ),
-            _NavButton(
-              label: 'Go to Detail (with ID)',
-              icon: Icons.article,
-              onTap: () => Navigator.pushNamed(
-                context,
-                AppRoutes.detail,
-                arguments: 'item-42',
-              ),
-            ),
+     
             _NavButton(
               label: 'Go to Unknown Route (404)',
               icon: Icons.error_outline,

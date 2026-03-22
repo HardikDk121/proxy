@@ -3,18 +3,18 @@
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/home_screen.dart';
-import '../screens/settings_screen.dart';
-import '../screens/detail_screen.dart';
 import '../screens/not_found_screen.dart';
+// Uncomment as you build each screen:
+// import '../screens/add_subject_screen.dart';
+// import '../screens/subject_detail_screen.dart';
+// import '../screens/bunk_predictor_screen.dart';
 import 'app_routes.dart';
 
-/// A single registered route entry.
 class _RouteEntry {
   final String path;
   final Widget Function(RouteSettings settings) builder;
   final bool fullscreenDialog;
   final bool maintainState;
-
   const _RouteEntry({
     required this.path,
     required this.builder,
@@ -23,20 +23,10 @@ class _RouteEntry {
   });
 }
 
-/// ─── Route Registry ──────────────────────────────────────────────────────────
-/// Add every screen here using the [route()] helper.
-/// Order matters: first match wins.
 class RouteGenerator {
   RouteGenerator._();
-
   static final List<_RouteEntry> _routes = [];
 
-  /// Register a route.
-  ///
-  /// ```dart
-  /// route(AppRoutes.home, (s) => const HomeScreen());
-  /// route(AppRoutes.detail, (s) => DetailScreen(id: s.arguments as String));
-  /// ```
   static void route(
     String path,
     Widget Function(RouteSettings settings) builder, {
@@ -51,22 +41,26 @@ class RouteGenerator {
     ));
   }
 
-  /// Call once — usually in [main()] or before [runApp()].
   static void registerRoutes() {
-    route(AppRoutes.splash,   (_) => const SplashScreen());
-    route(AppRoutes.home,     (_) => const HomeScreen());
+    route(AppRoutes.splash, (_) => const SplashScreen());
+    route(AppRoutes.home,   (_) => const HomeScreen());
 
-    route(AppRoutes.settings, (_) => const SettingsScreen());
-    route(
-      AppRoutes.detail,
-      (s) => DetailScreen(id: s.arguments as String? ?? ''),
-    );
+    // ── Bunk-O-Meter screens ─────────────────────────────────────────────
+    // Replace each _PlaceholderScreen with the real screen as you build it:
+
+    route(AppRoutes.addSubject,
+        (_) => const _PlaceholderScreen(title: 'Add Subject'));
+
+    route(AppRoutes.subjectDetail,
+        (_) => const _PlaceholderScreen(title: 'Subject Detail'));
+        // Replace with: (s) => SubjectDetailScreen(name: s.arguments as String)
+
+    route(AppRoutes.bunkPredictor,
+        (_) => const _PlaceholderScreen(title: 'Bunk Predictor'));
   }
 
-  // ─── onGenerateRoute handler ─────────────────────────────────────────────
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final String path = settings.name ?? AppRoutes.notFound;
-
+    final path = settings.name ?? AppRoutes.notFound;
     for (final entry in _routes) {
       if (entry.path == path) {
         return MaterialPageRoute(
@@ -77,18 +71,39 @@ class RouteGenerator {
         );
       }
     }
-
-    // ── Fallback: 404 ────────────────────────────────────────────────────
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => NotFoundScreen(routeName: path),
     );
   }
 
-  // ─── onUnknownRoute handler ──────────────────────────────────────────────
   static Route<dynamic> onUnknownRoute(RouteSettings settings) {
     return MaterialPageRoute(
       builder: (_) => NotFoundScreen(routeName: settings.name ?? 'unknown'),
+    );
+  }
+}
+
+// ── Placeholder until real screen is built ────────────────────────────────────
+class _PlaceholderScreen extends StatelessWidget {
+  final String title;
+  const _PlaceholderScreen({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title.toUpperCase())),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.construction_rounded, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text('$title — coming soon',
+                style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 }

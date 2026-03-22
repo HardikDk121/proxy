@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Notifications'),
             subtitle: const Text('Receive push notifications'),
             value: _notifications,
-            activeColor: Colors.indigo,
+            activeThumbColor: Colors.indigo,
             onChanged: (val) => setState(() => _notifications = val),
           ),
           SwitchListTile(
@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Dark Mode'),
             subtitle: const Text('Switch to dark theme'),
             value: _darkMode,
-            activeColor: Colors.indigo,
+            activeThumbColor: Colors.indigo,
             onChanged: (val) => setState(() => _darkMode = val),
           ),
           SwitchListTile(
@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Location Access'),
             subtitle: const Text('Allow app to access location'),
             value: _locationAccess,
-            activeColor: Colors.indigo,
+            activeThumbColor: Colors.indigo,
             onChanged: (val) => setState(() => _locationAccess = val),
           ),
           const Divider(),
