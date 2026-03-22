@@ -4,69 +4,96 @@ import '../routes/app_routes.dart';
 
 class NotFoundScreen extends StatelessWidget {
   final String routeName;
-
   const NotFoundScreen({super.key, required this.routeName});
 
   @override
   Widget build(BuildContext context) {
+    final cs    = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: AppBar(
-        title: const Text('Page Not Found'),
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
+        backgroundColor: cs.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // 404 illustration container
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.search_off_rounded,
+                  size: 56,
+                  color: cs.onErrorContainer,
+                ),
+              ),
+              const SizedBox(height: 32),
+
               // 404 badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: cs.errorContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: Colors.red.shade200),
                 ),
                 child: Text(
                   '404',
                   style: TextStyle(
-                    fontSize: 64,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red.shade400,
-                    letterSpacing: 4,
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    color: cs.error,
+                    letterSpacing: 2,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              const Text(
-                'Page Not Found',
-                style:
-                    TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
               Text(
-                'The route "$routeName" does not exist.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 15),
+                'Page Not Found',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
+              Text(
+                'The route "$routeName" doesn\'t exist.\nMaybe it was moved or deleted.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 40),
 
-              // Go home
-              ElevatedButton.icon(
-                icon: const Icon(Icons.home_outlined),
+              // Back to Home — FilledButton (M3)
+              FilledButton.icon(
+                icon: const Icon(Icons.home_rounded),
                 label: const Text('Back to Home'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 28, vertical: 14),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 onPressed: () => Navigator.pushNamedAndRemoveUntil(
                   context,
@@ -76,11 +103,20 @@ class NotFoundScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Go back
-              TextButton.icon(
-                icon: const Icon(Icons.arrow_back),
+              // Go Back — OutlinedButton (M3)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.arrow_back_rounded),
                 label: const Text('Go Back'),
-                style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
             ],

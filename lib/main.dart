@@ -3,9 +3,12 @@ import 'package:proxy/themes/theme.dart';
 import 'pie.dart';
 import 'routes/app_routes.dart';
 import 'routes/route_generator.dart';
- 
+import 'package:flutter_native_splash/flutter_native_splash.dart'; 
 void main() {
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding); // keep splash visible
   RouteGenerator.registerRoutes();
+  FlutterNativeSplash.remove(); 
   runApp(const ProxyApp());
 }
 
@@ -18,7 +21,7 @@ class ProxyApp extends StatelessWidget {
       title: 'Proxy',
       debugShowCheckedModeBanner: false, 
       theme: proxyTheme,                 
-      initialRoute: AppRoutes.splash,
+      initialRoute: AppRoutes.home,
  
       // ── Route generation ─────────────────────────────────────────────────
       onGenerateRoute: RouteGenerator.onGenerateRoute,

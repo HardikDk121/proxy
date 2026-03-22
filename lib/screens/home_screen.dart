@@ -1,5 +1,4 @@
 // lib/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../widgets/add_subject_screen.dart';
@@ -27,91 +26,222 @@ const mockSubjects = [
   MockSubject(name: 'DBMS',              type: 'Theory', attended: 18, total: 22),
   MockSubject(name: 'DBMS Lab',          type: 'Lab',    attended: 7,  total: 10),
 ];
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  double get _overallPercentage {
-    final attended = mockSubjects.fold(0, (sum, s) => sum + s.attended);
-    final total    = mockSubjects.fold(0, (sum, s) => sum + s.total);
+  double get _overallPct {
+    final attended = mockSubjects.fold(0, (s, e) => s + e.attended);
+    final total    = mockSubjects.fold(0, (s, e) => s + e.total);
     return total == 0 ? 0 : (attended / total) * 100;
   }
 
-  int get _grandTotal => mockSubjects.fold(0, (sum, s) => sum + s.total);
+  // Friendly greeting based on time of day
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning 👋';
+    if (h < 17) return 'Good afternoon 👋';
+    return 'Good evening 👋';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final cs    = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BUNK-O-METER'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart_rounded),
-            tooltip: 'Bunk Predictor',
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.bunkPredictor),
+      backgroundColor: cs.surface,
+      body: CustomScrollView(
+        slivers: [
+          // ── Large app bar with greeting ───────────────────────────────
+          SliverAppBar(
+            expandedHeight: 160,
+            floating: false,
+            pinned: true,
+            backgroundColor: cs.primaryContainer,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              title: Text(
+                'Proxy',
+                style: TextStyle(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
+              ),
+              background: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 56, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting,
+                      style: TextStyle(
+                        color: cs.onPrimaryContainer.withOpacity(0.75),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Here\'s your attendance',
+                      style: TextStyle(
+                        color: cs.onPrimaryContainer,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.bar_chart_rounded, color: cs.onPrimaryContainer),
+                tooltip: 'Bunk Predictor',
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.bunkPredictor),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
+
+          // ── Body content ──────────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Overall attendance card
+                _OverallCard(percentage: _overallPct),
+                const SizedBox(height: 12),
+
+                // Quick stats: Total / Safe / At Risk
+                _QuickStatsRow(subjects: mockSubjects),
+                const SizedBox(height: 12),
+
+                // ── Timetable shortcut ────────────────────────────────
+                _TimetableBanner(),
+                const SizedBox(height: 24),
+
+                // Section label
+                Row(
+                  children: [
+                    Text(
+                      'Your Subjects',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      label: Text(
+                        '${mockSubjects.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSecondaryContainer,
+                        ),
+                      ),
+                      backgroundColor: cs.secondaryContainer,
+                      side: BorderSide.none,
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // ── Single card with ListTiles + Dividers ─────────────
+                Card(
+                  elevation: 0,
+                  color: cs.surfaceContainerLow,
+                  shape:  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < mockSubjects.length; i++) ...[
+                        _SubjectListTile(subject: mockSubjects[i]),
+                        if (i < mockSubjects.length - 1)
+                          Divider(
+                            height: 1,
+                            indent: 72,
+                            endIndent: 16,
+                            color: cs.outlineVariant.withOpacity(0.5),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ]),
+            ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        children: [
-          _OverallCard(percentage: _overallPercentage),
-          const SizedBox(height: 12),
-          _QuickStatsRow(subjects: mockSubjects),
-          const SizedBox(height: 20),
-          Text('Your Subjects', style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 10),
-          ...mockSubjects.map((s) => _SubjectCard(subject: s, grandTotal: _grandTotal)),
-          const SizedBox(height: 80),
-        ],
-      ),
+
+      // ── FAB ──────────────────────────────────────────────────────────
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showAddSubjectSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Subject'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'Add Subject',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
 }
 
-// ── Overall Card ──────────────────────────────────────────────────────────────
+// ── Overall Attendance Card ───────────────────────────────────────────────────
 
 class _OverallCard extends StatelessWidget {
   final double percentage;
   const _OverallCard({required this.percentage});
 
-  Color _statusColor(BuildContext context) {
+  _StatusInfo _info(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    if (percentage >= 80) return cs.primary;
-    if (percentage >= 75) return Colors.orange;
-    return cs.error;
-  }
-
-  String get _statusText {
-    if (percentage >= 80) return "You're doing great!";
-    if (percentage >= 75) return 'Borderline — attend more classes';
-    return 'Danger zone! Stop bunking';
+    if (percentage >= 80) {
+      return _StatusInfo(
+        color: cs.primary,
+        containerColor: cs.primaryContainer,
+        onContainerColor: cs.onPrimaryContainer,
+        icon: Icons.sentiment_very_satisfied_rounded,
+        message: "You're doing great! Keep it up 🎉",
+      );
+    }
+    if (percentage >= 75) {
+      return _StatusInfo(
+        color: const Color(0xFF7C5800),
+        containerColor: const Color(0xFFFFDEA8),
+        onContainerColor: const Color(0xFF261900),
+        icon: Icons.sentiment_neutral_rounded,
+        message: 'Borderline — attend a few more classes',
+      );
+    }
+    return _StatusInfo(
+      color: cs.error,
+      containerColor: cs.errorContainer,
+      onContainerColor: cs.onErrorContainer,
+      icon: Icons.sentiment_very_dissatisfied_rounded,
+      message: 'Danger zone! Stop bunking now',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = _statusColor(context);
+    final info = _info(context);
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withOpacity(0.4)),
-      ),
+      color: info.containerColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
+            // Circular progress ring
             SizedBox(
               width: 80, height: 80,
               child: Stack(
@@ -120,37 +250,72 @@ class _OverallCard extends StatelessWidget {
                   CircularProgressIndicator(
                     value: percentage / 100,
                     strokeWidth: 7,
-                    backgroundColor: color.withOpacity(0.15),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    backgroundColor: info.color.withOpacity(0.18),
+                    valueColor: AlwaysStoppedAnimation<Color>(info.color),
                     strokeCap: StrokeCap.round,
                   ),
                   Center(
                     child: Text(
                       '${percentage.toStringAsFixed(0)}%',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: info.color,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 18),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Overall Attendance', style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 6),
-                  Text(_statusText,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color)),
-                  const SizedBox(height: 8),
+                  Text(
+                    'Overall Attendance',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: info.onContainerColor.withOpacity(0.65),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
                   Row(
                     children: [
-                      Icon(Icons.flag_outlined, size: 13,
-                          color: theme.textTheme.bodyMedium?.color),
-                      const SizedBox(width: 4),
-                      Text('Min required: 75%',
-                          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12)),
+                      Icon(info.icon, size: 18, color: info.color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          info.message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: info.onContainerColor,
+                          ),
+                        ),
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Mini progress bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: percentage / 100,
+                      backgroundColor: info.color.withOpacity(0.18),
+                      valueColor: AlwaysStoppedAnimation<Color>(info.color),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Minimum required: 75%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: info.onContainerColor.withOpacity(0.55),
+                    ),
                   ),
                 ],
               ),
@@ -160,6 +325,19 @@ class _OverallCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _StatusInfo {
+  final Color color, containerColor, onContainerColor;
+  final IconData icon;
+  final String message;
+  const _StatusInfo({
+    required this.color,
+    required this.containerColor,
+    required this.onContainerColor,
+    required this.icon,
+    required this.message,
+  });
 }
 
 // ── Quick Stats Row ───────────────────────────────────────────────────────────
@@ -171,186 +349,301 @@ class _QuickStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs     = Theme.of(context).colorScheme;
-    final total  = subjects.length;
-    final safe   = subjects.where((s) => s.percentage >= 80).length;
+    final safe   = subjects.where((s) => s.percentage >= 75).length;
     final danger = subjects.where((s) => s.percentage < 75).length;
 
     return Row(
       children: [
-        _StatChip(value: '$total',  label: 'Subjects', color: const Color(0xFFE0E0E0)),
+        _StatTile(
+          value: '${subjects.length}',
+          label: 'Total',
+          icon: Icons.list_alt_rounded,
+          bgColor: cs.surfaceContainerHighest,
+          fgColor: cs.onSurfaceVariant,
+        ),
         const SizedBox(width: 8),
-        _StatChip(value: '$safe',   label: 'Safe',     color: cs.primary),
+        _StatTile(
+          value: '$safe',
+          label: 'Safe',
+          icon: Icons.check_circle_rounded,
+          bgColor: cs.primaryContainer,
+          fgColor: cs.onPrimaryContainer,
+        ),
         const SizedBox(width: 8),
-        _StatChip(value: '$danger', label: 'At Risk',  color: cs.error),
+        _StatTile(
+          value: '$danger',
+          label: 'At Risk',
+          icon: Icons.warning_rounded,
+          bgColor: cs.errorContainer,
+          fgColor: cs.onErrorContainer,
+        ),
       ],
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
+class _StatTile extends StatelessWidget {
   final String value, label;
-  final Color color;
-  const _StatChip({required this.value, required this.label, required this.color});
+  final IconData icon;
+  final Color bgColor, fgColor;
+  const _StatTile({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.bgColor,
+    required this.fgColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Card(
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withOpacity(0.3)),
-        ),
+        color: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
           child: Column(
             children: [
-              Text(value,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-              const SizedBox(height: 2),
-              Text(label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Subject Card ──────────────────────────────────────────────────────────────
-
-class _SubjectCard extends StatelessWidget {
-  final MockSubject subject;
-  final int grandTotal;
-  const _SubjectCard({required this.subject, required this.grandTotal});
-
-  Color _statusColor(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    if (subject.percentage >= 80) return cs.primary;
-    if (subject.percentage >= 75) return Colors.orange;
-    return cs.error;
-  }
-
-  IconData get _icon =>
-      subject.type == 'Lab' ? Icons.science_outlined : Icons.menu_book_outlined;
-
-  double get _subjectImpact => subject.total == 0 ? 0 : (1 / subject.total) * 100;
-  double get _overallImpact => grandTotal == 0 ? 0 : (1 / grandTotal) * 100;
-
-  Color _badgeColor(BuildContext context, double impact) {
-    final cs = Theme.of(context).colorScheme;
-    if (impact >= 7) return cs.error;
-    if (impact >= 4) return Colors.orange;
-    return cs.primary;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme             = Theme.of(context);
-    final color             = _statusColor(context);
-    final subjectBadgeColor = _badgeColor(context, _subjectImpact);
-    final overallBadgeColor = _badgeColor(context, _overallImpact);
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.12),
-          child: Icon(_icon, color: color, size: 20),
-        ),
-        title: Text(subject.name,
-            style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 3),
-            Text(
-              '${subject.type}  ·  ${subject.attended}/${subject.total} classes',
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                _ImpactBadge(
-                  label: 'Subject',
-                  value: '−${_subjectImpact.toStringAsFixed(1)}%',
-                  color: subjectBadgeColor,
-                ),
-                const SizedBox(width: 6),
-                _ImpactBadge(
-                  label: 'Overall',
-                  value: '−${_overallImpact.toStringAsFixed(2)}%',
-                  color: overallBadgeColor,
-                ),
-              ],
-            ),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: SizedBox(
-          width: 64,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('${subject.percentage.toStringAsFixed(0)}%',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+              Icon(icon, color: fgColor, size: 20),
               const SizedBox(height: 5),
-              LinearProgressIndicator(
-                value: subject.percentage / 100,
-                backgroundColor: Colors.white.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-                minHeight: 4,
-                borderRadius: BorderRadius.circular(2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: fgColor,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: fgColor.withOpacity(0.7),
+                ),
               ),
             ],
           ),
         ),
-        onTap: () => Navigator.pushNamed(
-          context,
-          AppRoutes.subjectDetail,
-          arguments: subject.name,
+      ),
+    );
+  }
+}
+
+// ── Subject List Tile ─────────────────────────────────────────────────────────
+
+class _SubjectListTile extends StatelessWidget {
+  final MockSubject subject;
+  const _SubjectListTile({required this.subject});
+
+  Color _accentColor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    if (subject.percentage >= 80) return cs.primary;
+    if (subject.percentage >= 75) return const Color(0xFF7C5800);
+    return cs.error;
+  }
+
+  Color _accentBg(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    if (subject.percentage >= 80) return cs.primaryContainer;
+    if (subject.percentage >= 75) return const Color(0xFFFFDEA8);
+    return cs.errorContainer;
+  }
+
+  IconData get _statusIcon {
+    if (subject.percentage >= 80) return Icons.check_circle_rounded;
+    if (subject.percentage >= 75) return Icons.warning_rounded;
+    return Icons.error_rounded;
+  }
+
+  String _bunkInfo() {
+    final margin = subject.attended - (0.75 * subject.total).ceil();
+    if (margin > 0) return 'Can bunk $margin more';
+    if (margin == 0) return 'Attend to stay safe';
+    return 'Need ${-margin} more classes';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs     = Theme.of(context).colorScheme;
+    final color  = _accentColor(context);
+    final bg     = _accentBg(context);
+    final isLab  = subject.type == 'Lab';
+    final iconBg = isLab ? const Color(0xFFFFDEA8) : cs.primaryContainer;
+    final iconFg = isLab ? const Color(0xFF7C5800) : cs.onPrimaryContainer;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      onTap: () => Navigator.pushNamed(
+        context,
+        AppRoutes.subjectDashboard
+        
+      ),
+
+      // ── Leading: rounded icon ─────────────────────────────────────────
+      leading: Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: iconBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          isLab ? Icons.science_rounded : Icons.menu_book_rounded,
+          color: iconFg,
+          size: 22,
+        ),
+      ),
+
+      // ── Title + subtitle ──────────────────────────────────────────────
+      title: Text(
+        subject.name,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: cs.onSurface,
+        ),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 3),
+          // Type chip + class count
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isLab
+                      ? const Color(0xFFFFDEA8)
+                      : cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  subject.type,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isLab
+                        ? const Color(0xFF7C5800)
+                        : cs.onSecondaryContainer,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${subject.attended}/${subject.total} classes',
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          // Bunk info row
+          Row(
+            children: [
+              Icon(_statusIcon, size: 12, color: color),
+              const SizedBox(width: 4),
+              Text(
+                _bunkInfo(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      isThreeLine: true,
+
+      // ── Trailing: % + progress bar + chevron ─────────────────────────
+      trailing: SizedBox(
+        width: 60,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${subject.percentage.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: subject.percentage / 100,
+                backgroundColor: color.withOpacity(0.15),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 4,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Impact Badge ──────────────────────────────────────────────────────────────
+// ── Timetable Banner ──────────────────────────────────────────────────────────
 
-class _ImpactBadge extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  const _ImpactBadge({required this.label, required this.value, required this.color});
+class _TimetableBanner extends StatelessWidget {
+  const _TimetableBanner();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.35)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: '$label  ',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: color.withOpacity(0.7)),
-            ),
-            TextSpan(
-              text: value,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
-            ),
-          ],
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: cs.secondaryContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.timetable),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: cs.onSecondaryContainer.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.calendar_month_rounded,
+            color: cs.onSecondaryContainer,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          'View Timetable',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: cs.onSecondaryContainer,
+          ),
+        ),
+        subtitle: Text(
+          'See your full weekly schedule',
+          style: TextStyle(
+            fontSize: 12,
+            color: cs.onSecondaryContainer.withOpacity(0.7),
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 16,
+          color: cs.onSecondaryContainer.withOpacity(0.6),
         ),
       ),
     );

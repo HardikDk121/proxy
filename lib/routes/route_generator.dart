@@ -1,15 +1,17 @@
 // lib/routes/route_generator.dart
 
 import 'package:flutter/material.dart';
-import '../screens/splash_screen.dart';
+//import '../screens/splash_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/not_found_screen.dart';
+import '../screens/time_table_screen.dart';
 // Uncomment as you build each screen:
 // import '../screens/add_subject_screen.dart';
 // import '../screens/subject_detail_screen.dart';
 // import '../screens/bunk_predictor_screen.dart';
 import 'app_routes.dart';
-
+import '../screens/subject_screen.dart';
+//import '../models/subject.dart';
 class _RouteEntry {
   final String path;
   final Widget Function(RouteSettings settings) builder;
@@ -42,11 +44,13 @@ class RouteGenerator {
   }
 
   static void registerRoutes() {
-    route(AppRoutes.splash, (_) => const SplashScreen());
-    route(AppRoutes.home,   (_) => const HomeScreen());
+    //route(AppRoutes.splash, (_) => const SplashScreen());
+    route(AppRoutes.home, (_) => const HomeScreen());
 
     // ── Bunk-O-Meter screens ─────────────────────────────────────────────
     // Replace each _PlaceholderScreen with the real screen as you build it:
+
+    route(AppRoutes.timetable, (_) => const TimetableScreen());
 
     route(AppRoutes.addSubject,
         (_) => const _PlaceholderScreen(title: 'Add Subject'));
@@ -57,6 +61,10 @@ class RouteGenerator {
 
     route(AppRoutes.bunkPredictor,
         (_) => const _PlaceholderScreen(title: 'Bunk Predictor'));
+
+    route(AppRoutes.subjectDashboard,
+    (_) => const SubjectDashboardScreen(),
+);
   }
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
