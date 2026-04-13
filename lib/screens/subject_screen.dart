@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:proxy/themes/theme.dart'; // exposes AttendanceColors
 
 // ── Static mock data ─────────────────────────────────────────────────────────
 class _MockSubject {
@@ -25,20 +26,6 @@ class _MockSubject {
   int get missed => total - attended;
 }
 
-// ── Colors ───────────────────────────────────────────────────────────────────
-class _C {
-  static const background = Color(0xFF0A0E1A);
-  static const surface    = Color(0xFF111827);
-  static const border     = Color(0xFF1F2937);
-  static const accent     = Color(0xFF3B82F6);
-  static const success    = Color(0xFF22C55E);
-  static const warning    = Color(0xFFF59E0B);
-  static const danger     = Color(0xFFEF4444);
-  static const textPrimary   = Color(0xFFF9FAFB);
-  static const textSecondary = Color(0xFF9CA3AF);
-  static const textMuted     = Color(0xFF6B7280);
-}
-
 // ── Screen ───────────────────────────────────────────────────────────────────
 class SubjectDashboardScreen extends StatefulWidget {
   const SubjectDashboardScreen({super.key});
@@ -50,7 +37,6 @@ class SubjectDashboardScreen extends StatefulWidget {
 class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
     with TickerProviderStateMixin {
 
-  // Static subject — swap values here to test different states
   late _MockSubject _subject;
 
   late AnimationController _progressCtrl;
@@ -109,7 +95,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
       _subject.total += 1;
       _animateProgress();
     });
-    _showSnack('✓ Present marked', _C.success);
+    _showSnack('✓ Present marked', Theme.of(context).colorScheme.secondary);
   }
 
   void _markAbsent() {
@@ -118,7 +104,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
       _subject.total += 1;
       _animateProgress();
     });
-    _showSnack('✗ Absent marked', _C.danger);
+    _showSnack('✗ Absent marked', Theme.of(context).colorScheme.error);
   }
 
   void _animateProgress() {
@@ -166,11 +152,12 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Theming helpers ──────────────────────────────────────────────────────
 
-  Color get _statusColor {
-    final p = _subject.percentage;
-    if (p >= 85) return _C.success;
-    if (p >= 75) return _C.warning;
-    return _C.danger;
+  /// Returns the semantic attendance color from the proxyTheme via
+  /// AttendanceColors — aligns perfectly with colorScheme.secondary (safe),
+  /// AttendanceColors.borderline (amber, no direct M3 slot), and
+  /// colorScheme.error (danger).
+  Color _statusColor(BuildContext context) {
+    return AttendanceColors.forPercentage(_subject.percentage);
   }
 
   String get _statusLabel {
@@ -185,11 +172,11 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildAppBar(),
+          _buildAppBar(context),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
             sliver: SliverList(
@@ -201,17 +188,17 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                     position: _slideAnim,
                     child: Column(
                       children: [
-                        _buildProgressCard(),
+                        _buildProgressCard(context),
                         const SizedBox(height: 16),
-                        _buildStatsRow(),
+                        _buildStatsRow(context),
                         const SizedBox(height: 16),
-                        _buildStatusBanner(),
+                        _buildStatusBanner(context),
                         const SizedBox(height: 16),
-                        _buildMarkAttendanceCard(),
+                        _buildMarkAttendanceCard(context),
                         const SizedBox(height: 16),
-                        _buildBunkPredictorCard(),
+                        _buildBunkPredictorCard(context),
                         const SizedBox(height: 16),
-                        _buildSubjectInfoCard(),
+                        _buildSubjectInfoCard(context),
                       ],
                     ),
                   ),
@@ -226,22 +213,23 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Sliver App Bar ───────────────────────────────────────────────────────
 
-  SliverAppBar _buildAppBar() {
+  SliverAppBar _buildAppBar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return SliverAppBar(
       expandedHeight: 120,
       pinned: true,
-      backgroundColor: _C.surface,
+      backgroundColor: cs.surface,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
         onPressed: () => Navigator.pop(context),
         icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        color: _C.textPrimary,
+        color: cs.onSurface,
       ),
       actions: [
         IconButton(
           onPressed: _showOptionsSheet,
           icon: const Icon(Icons.more_vert_rounded),
-          color: _C.textSecondary,
+          color: cs.onSurfaceVariant,
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -252,8 +240,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           children: [
             Text(
               _subject.name,
-              style: const TextStyle(
-                color: _C.textPrimary,
+              style: TextStyle(
+                color: cs.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.3,
@@ -268,8 +256,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 const SizedBox(width: 8),
                 Text(
                   '${_subject.attended}/${_subject.total} classes',
-                  style: const TextStyle(
-                    color: _C.textMuted,
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -284,7 +272,9 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Progress Card ────────────────────────────────────────────────────────
 
-  Widget _buildProgressCard() {
+  Widget _buildProgressCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final statusColor = _statusColor(context);
     return _Card(
       child: Row(
         children: [
@@ -300,8 +290,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                     child: CircularProgressIndicator(
                       value: _progressAnim.value,
                       strokeWidth: 10,
-                      backgroundColor: _C.border,
-                      valueColor: AlwaysStoppedAnimation(_statusColor),
+                      backgroundColor: cs.outline,
+                      valueColor: AlwaysStoppedAnimation(statusColor),
                       strokeCap: StrokeCap.round,
                     ),
                   ),
@@ -311,7 +301,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                       Text(
                         '${_subject.percentage.toStringAsFixed(1)}%',
                         style: TextStyle(
-                          color: _statusColor,
+                          color: statusColor,
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -1,
@@ -320,7 +310,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                       Text(
                         _statusLabel,
                         style: TextStyle(
-                          color: _statusColor.withOpacity(0.7),
+                          color: statusColor.withOpacity(0.7),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -340,21 +330,23 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                   icon: Icons.check_circle_outline_rounded,
                   label: 'Attended',
                   value: '${_subject.attended} classes',
-                  color: _C.success,
+                  // Safe/success → secondary (Emerald)
+                  color: cs.secondary,
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
                   icon: Icons.cancel_outlined,
                   label: 'Missed',
                   value: '${_subject.missed} classes',
-                  color: _C.danger,
+                  // Danger → error
+                  color: cs.error,
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
                   icon: Icons.event_note_rounded,
                   label: 'Total',
                   value: '${_subject.total} classes',
-                  color: _C.textSecondary,
+                  color: cs.onSurfaceVariant,
                 ),
               ],
             ),
@@ -366,7 +358,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Stats Row ────────────────────────────────────────────────────────────
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(
@@ -374,7 +367,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
             icon: Icons.access_time_rounded,
             label: 'Hrs\nAttended',
             value: '${_subject.hoursAttended.toStringAsFixed(1)}h',
-            color: _C.accent,
+            // Generic accent → primary (Indigo)
+            color: cs.primary,
           ),
         ),
         const SizedBox(width: 12),
@@ -383,7 +377,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
             icon: Icons.hourglass_bottom_rounded,
             label: 'Total\nHours',
             value: '${_subject.totalHours.toStringAsFixed(1)}h',
-            color: _C.textSecondary,
+            color: cs.onSurfaceVariant,
           ),
         ),
         const SizedBox(width: 12),
@@ -392,7 +386,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
             icon: Icons.timer_outlined,
             label: 'Per\nClass',
             value: '${_subject.duration}h',
-            color: _C.warning,
+            // Borderline (amber) — no dedicated colorScheme slot
+            color: AttendanceColors.borderline,
           ),
         ),
       ],
@@ -401,19 +396,32 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Status Banner ────────────────────────────────────────────────────────
 
-  Widget _buildStatusBanner() {
+  Widget _buildStatusBanner(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final safe = _subject.percentage >= 75;
     final icon = safe
         ? (_canBunk > 0 ? Icons.check_circle_rounded : Icons.warning_amber_rounded)
         : Icons.error_rounded;
-    final color = safe ? (_canBunk > 0 ? _C.success : _C.warning) : _C.danger;
+
+    // Color logic mirrors AttendanceColors.forPercentage semantics
+    final Color color;
+    if (!safe) {
+      color = cs.error; // < 75% → danger
+    } else if (_canBunk > 0) {
+      color = cs.secondary; // safe & has buffer → emerald
+    } else {
+      color = AttendanceColors.borderline; // edge case → amber
+    }
+
     final text = safe
         ? (_canBunk > 0
             ? 'You can bunk $_canBunk more class${_canBunk > 1 ? 'es' : ''}'
             : 'You\'re at the edge! Don\'t miss any class')
         : 'Attend $_needsToAttend more class${_needsToAttend > 1 ? 'es' : ''} to reach 75%';
     final subtext = safe
-        ? (_canBunk > 0 ? 'Attendance stays ≥ 75% after bunking' : 'One absence drops you below 75%')
+        ? (_canBunk > 0
+            ? 'Attendance stays ≥ 75% after bunking'
+            : 'One absence drops you below 75%')
         : 'Your attendance is below the required threshold';
 
     return Container(
@@ -450,19 +458,20 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Mark Attendance Card ─────────────────────────────────────────────────
 
-  Widget _buildMarkAttendanceCard() {
+  Widget _buildMarkAttendanceCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Mark Today\'s Attendance',
+          Text('Mark Today\'s Attendance',
               style: TextStyle(
-                  color: _C.textPrimary,
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('Update attendance for the last conducted class',
-              style: TextStyle(color: _C.textMuted, fontSize: 12)),
+          Text('Update attendance for the last conducted class',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -470,7 +479,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 child: _AttendanceButton(
                   label: 'Present',
                   icon: Icons.check_rounded,
-                  color: _C.success,
+                  // Success → secondary (Emerald)
+                  color: cs.secondary,
                   onTap: _markPresent,
                 ),
               ),
@@ -479,7 +489,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 child: _AttendanceButton(
                   label: 'Absent',
                   icon: Icons.close_rounded,
-                  color: _C.danger,
+                  // Danger → error
+                  color: cs.error,
                   onTap: _markAbsent,
                 ),
               ),
@@ -492,7 +503,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Bunk Predictor Card ──────────────────────────────────────────────────
 
-  Widget _buildBunkPredictorCard() {
+  Widget _buildBunkPredictorCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final rows = [
       ('After +1 present', _afterPresent(1)),
       ('After +3 present', _afterPresent(3)),
@@ -505,12 +517,12 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.auto_graph_rounded, color: _C.accent, size: 18),
-              SizedBox(width: 8),
+            children: [
+              Icon(Icons.auto_graph_rounded, color: cs.primary, size: 18),
+              const SizedBox(width: 8),
               Text('Bunk Predictor',
                   style: TextStyle(
-                      color: _C.textPrimary,
+                      color: cs.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
             ],
@@ -518,22 +530,24 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           const SizedBox(height: 16),
           ...rows.map((r) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _buildPredictorRow(r.$1, r.$2),
+                child: _buildPredictorRow(context, r.$1, r.$2),
               )),
         ],
       ),
     );
   }
 
-  Widget _buildPredictorRow(String label, double percentage) {
-    final color = percentage >= 75 ? _C.success : _C.danger;
+  Widget _buildPredictorRow(BuildContext context, String label, double percentage) {
+    final cs = Theme.of(context).colorScheme;
+    // ≥ 75% safe → secondary (Emerald), else danger → error
+    final color = percentage >= 75 ? cs.secondary : cs.error;
     return Row(
       children: [
         Expanded(
           flex: 3,
           child: Text(label,
-              style: const TextStyle(
-                  color: _C.textSecondary,
+              style: TextStyle(
+                  color: cs.onSurfaceVariant,
                   fontSize: 12,
                   fontWeight: FontWeight.w500)),
         ),
@@ -543,7 +557,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: (percentage / 100).clamp(0.0, 1.0),
-              backgroundColor: _C.border,
+              backgroundColor: cs.outline,
               valueColor: AlwaysStoppedAnimation(color),
               minHeight: 6,
             ),
@@ -565,23 +579,24 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   // ── Subject Info Card ────────────────────────────────────────────────────
 
-  Widget _buildSubjectInfoCard() {
+  Widget _buildSubjectInfoCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Subject Info',
+          Text('Subject Info',
               style: TextStyle(
-                  color: _C.textPrimary,
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
-          _DetailRow(label: 'Subject Name',      value: _subject.name),
-          _DetailRow(label: 'Type',              value: _subject.type),
-          _DetailRow(label: 'Class Duration',    value: '${_subject.duration} hours'),
-          _DetailRow(label: 'Classes Attended',  value: '${_subject.attended}'),
-          _DetailRow(label: 'Classes Held',      value: '${_subject.total}'),
-          _DetailRow(label: 'Required Minimum',  value: '75%', isLast: true),
+          _DetailRow(label: 'Subject Name',     value: _subject.name),
+          _DetailRow(label: 'Type',             value: _subject.type),
+          _DetailRow(label: 'Class Duration',   value: '${_subject.duration} hours'),
+          _DetailRow(label: 'Classes Attended', value: '${_subject.attended}'),
+          _DetailRow(label: 'Classes Held',     value: '${_subject.total}'),
+          _DetailRow(label: 'Required Minimum', value: '75%', isLast: true),
         ],
       ),
     );
@@ -592,56 +607,62 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   void _showOptionsSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _C.surface,
+      // Let the theme's bottomSheetTheme handle background automatically;
+      // set to null so the theme backgroundColor is respected.
+      backgroundColor: null,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _C.border,
-                borderRadius: BorderRadius.circular(2),
+      builder: (_) {
+        final cs = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.edit_rounded, color: _C.accent),
-              title: const Text('Edit Subject',
-                  style: TextStyle(color: _C.textPrimary)),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.refresh_rounded, color: _C.warning),
-              title: const Text('Reset Attendance',
-                  style: TextStyle(color: _C.warning)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _subject.attended = 0;
-                  _subject.total = 0;
-                  _animateProgress();
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: _C.danger),
-              title: const Text('Delete Subject',
-                  style: TextStyle(color: _C.danger)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pop(context); // go back to list
-              },
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.edit_rounded, color: cs.primary),
+                title: Text('Edit Subject',
+                    style: TextStyle(color: cs.onSurface)),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: Icon(Icons.refresh_rounded,
+                    color: AttendanceColors.borderline),
+                title: Text('Reset Attendance',
+                    style: TextStyle(color: AttendanceColors.borderline)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _subject.attended = 0;
+                    _subject.total = 0;
+                    _animateProgress();
+                  });
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outline_rounded, color: cs.error),
+                title: Text('Delete Subject',
+                    style: TextStyle(color: cs.error)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context); // go back to list
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -656,13 +677,14 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _C.surface,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _C.border),
+        border: Border.all(color: cs.outline),
       ),
       child: child,
     );
@@ -675,17 +697,20 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Lab → primary (Indigo), Theory/others → borderline (Amber)
     final isLab = type == 'Lab';
+    final color = isLab ? cs.primary : AttendanceColors.borderline;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: (isLab ? _C.accent : _C.warning).withOpacity(0.2),
+        color: color.withOpacity(0.2),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         type,
         style: TextStyle(
-          color: isLab ? _C.accent : _C.warning,
+          color: color,
           fontSize: 10,
           fontWeight: FontWeight.w700,
         ),
@@ -707,13 +732,16 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
         Icon(icon, color: color, size: 14),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(
-                color: _C.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+            style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: FontWeight.w500)),
         const Spacer(),
         Text(value,
             style: TextStyle(
@@ -736,12 +764,13 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _C.surface,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _C.border),
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,8 +785,10 @@ class _StatCard extends StatelessWidget {
                   letterSpacing: -0.5)),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(
-                  color: _C.textMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+              style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -813,6 +844,7 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Padding(
@@ -820,20 +852,20 @@ class _DetailRow extends StatelessWidget {
           child: Row(
             children: [
               Text(label,
-                  style: const TextStyle(
-                      color: _C.textMuted,
+                  style: TextStyle(
+                      color: cs.onSurfaceVariant,
                       fontSize: 13,
                       fontWeight: FontWeight.w500)),
               const Spacer(),
               Text(value,
-                  style: const TextStyle(
-                      color: _C.textPrimary,
+                  style: TextStyle(
+                      color: cs.onSurface,
                       fontSize: 13,
                       fontWeight: FontWeight.w600)),
             ],
           ),
         ),
-        if (!isLast) Divider(color: _C.border, height: 1, thickness: 1),
+        if (!isLast) Divider(color: cs.outline, height: 1, thickness: 1),
       ],
     );
   }

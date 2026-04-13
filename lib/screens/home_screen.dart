@@ -1,42 +1,23 @@
 // lib/screens/home_screen.dart
+// ─────────────────────────────────────────────────────────────────────────────
+// HomeScreen — fully wired to Hive via ValueListenableBuilder.
+// No setState, no StreamBuilder: the box notifies the widget tree directly.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/subject.dart';
 import '../routes/app_routes.dart';
+import '../services/attendance_service.dart';
 import '../widgets/add_subject_screen.dart';
 
-// ── Static mock data ──────────────────────────────────────────────────────────
-class MockSubject {
-  final String name;
-  final String type;
-  final int attended;
-  final int total;
-  const MockSubject({
-    required this.name,
-    required this.type,
-    required this.attended,
-    required this.total,
-  });
-  double get percentage => total == 0 ? 0 : (attended / total) * 100;
-}
-
-const mockSubjects = [
-  MockSubject(name: 'Data Structures',   type: 'Theory', attended: 22, total: 27),
-  MockSubject(name: 'Operating Systems', type: 'Theory', attended: 14, total: 20),
-  MockSubject(name: 'OS Lab',            type: 'Lab',    attended: 9,  total: 13),
-  MockSubject(name: 'Computer Networks', type: 'Theory', attended: 10, total: 16),
-  MockSubject(name: 'DBMS',              type: 'Theory', attended: 18, total: 22),
-  MockSubject(name: 'DBMS Lab',          type: 'Lab',    attended: 7,  total: 10),
-];
+// ─────────────────────────────────────────────────────────────────────────────
+//  HOME SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  double get _overallPct {
-    final attended = mockSubjects.fold(0, (s, e) => s + e.attended);
-    final total    = mockSubjects.fold(0, (s, e) => s + e.total);
-    return total == 0 ? 0 : (attended / total) * 100;
-  }
 
   String get _greeting {
     final h = DateTime.now().hour;
@@ -47,101 +28,190 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ── ValueListenableBuilder listens to the Hive box ────────────────────
+    // Every add / update / delete automatically triggers a rebuild here.
+    return ValueListenableBuilder<Box<Subject>>(
+      valueListenable: AttendanceService.listenable,
+      builder: (context, box, _) {
+        final subjects = box.values.toList();
+
+        final attended = subjects.fold(0, (s, e) => s + e.attended);
+        final total    = subjects.fold(0, (s, e) => s + e.total);
+        final overallPct = total == 0 ? 0.0 : (attended / total) * 100;
+
+        return Scaffold(
+          body: subjects.isEmpty
+              ? _EmptyState(greeting: _greeting)
+              : CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // ── Header ───────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _HeroHeader(
+                        greeting: _greeting,
+                        overallPct: overallPct,
+                      ),
+                    ),
+
+                    // ── Quick Stats ──────────────────────────────────────
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _QuickStatsRow(subjects: subjects),
+                      ),
+                    ),
+
+                    // ── Timetable Banner ─────────────────────────────────
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      sliver: SliverToBoxAdapter(child: _TimetableBanner()),
+                    ),
+
+                    // ── Section Title ────────────────────────────────────
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: _SectionHeader(count: subjects.length),
+                      ),
+                    ),
+
+                    // ── Subject List ─────────────────────────────────────
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _SubjectCard(subject: subjects[index]),
+                          ),
+                          childCount: subjects.length,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => showAddSubjectSheet(context),
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: const Text(
+              'Add Subject',
+              style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  EMPTY STATE — shown when the Hive box has no records yet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final String greeting;
+  const _EmptyState({required this.greeting});
+
+  @override
+  Widget build(BuildContext context) {
     final cs    = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          // ── Header ─────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _HeroHeader(
-              greeting: _greeting,
-              overallPct: _overallPct,
-            ),
-          ),
-
-          // ── Quick Stats ────────────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: _QuickStatsRow(subjects: mockSubjects),
-            ),
-          ),
-
-          // ── Timetable Banner ───────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            sliver: SliverToBoxAdapter(child: _TimetableBanner()),
-          ),
-
-          // ── Section Title ──────────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Your Subjects',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${mockSubjects.length}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Subject List ───────────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _SubjectCard(subject: mockSubjects[index]),
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 36),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  shape: BoxShape.circle,
                 ),
-                childCount: mockSubjects.length,
+                child: Icon(Icons.school_rounded, size: 46, color: cs.onPrimaryContainer),
               ),
-            ),
+              const SizedBox(height: 28),
+              Text(
+                '$greeting 👋',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Add your first subject to start\ntracking attendance.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 36),
+              FilledButton.icon(
+                onPressed: () => showAddSubjectSheet(context),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Subject'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(200, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showAddSubjectSheet(context),
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text(
-          'Add Subject',
-          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SECTION HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final int count;
+  const _SectionHeader({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs    = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Container(
+          width: 3, height: 18,
+          decoration: BoxDecoration(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Your Subjects',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.primary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: cs.primary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -156,9 +226,9 @@ class _HeroHeader extends StatelessWidget {
   const _HeroHeader({required this.greeting, required this.overallPct});
 
   Color _statusColor(ColorScheme cs) {
-    if (overallPct >= 75) return cs.secondary;      // emerald
-    if (overallPct >= 60) return const Color(0xFFFFB020); // amber
-    return cs.error;                                 // red
+    if (overallPct >= 75) return cs.secondary;
+    if (overallPct >= 60) return const Color(0xFFFFB020);
+    return cs.error;
   }
 
   String get _statusMessage {
@@ -177,10 +247,9 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs    = Theme.of(context).colorScheme;
-    final color = _statusColor(cs);
+    final cs      = Theme.of(context).colorScheme;
+    final color   = _statusColor(cs);
     final screenW = MediaQuery.of(context).size.width;
-    // Responsive ring size: smaller on narrow screens
     final ringSize = screenW < 360 ? 72.0 : 88.0;
     final ringFont = screenW < 360 ? 18.0 : 22.0;
 
@@ -208,10 +277,8 @@ class _HeroHeader extends StatelessWidget {
               // ── Top bar ───────────────────────────────────────────────
               Row(
                 children: [
-                  // App logo
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 36, height: 36,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [cs.primary, cs.primary.withOpacity(0.7)],
@@ -222,8 +289,7 @@ class _HeroHeader extends StatelessWidget {
                       child: Text(
                         'P',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
+                          color: Colors.white, fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -237,17 +303,14 @@ class _HeroHeader extends StatelessWidget {
                         Text(
                           'Proxy',
                           style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
-                            letterSpacing: 0.3,
+                            fontSize: 17, fontWeight: FontWeight.w800,
+                            color: cs.onSurface, letterSpacing: 0.3,
                           ),
                         ),
                         Text(
                           greeting,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: cs.onSurfaceVariant,
+                            fontSize: 12, color: cs.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -271,10 +334,8 @@ class _HeroHeader extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Ring
                   SizedBox(
-                    width: ringSize,
-                    height: ringSize,
+                    width: ringSize, height: ringSize,
                     child: CustomPaint(
                       painter: _RingPainter(
                         progress: overallPct / 100,
@@ -288,17 +349,14 @@ class _HeroHeader extends StatelessWidget {
                             Text(
                               '${overallPct.toStringAsFixed(0)}%',
                               style: TextStyle(
-                                fontSize: ringFont,
-                                fontWeight: FontWeight.w900,
-                                color: color,
-                                height: 1,
+                                fontSize: ringFont, fontWeight: FontWeight.w900,
+                                color: color, height: 1,
                               ),
                             ),
                             Text(
                               'overall',
                               style: TextStyle(
-                                fontSize: 10,
-                                color: cs.onSurfaceVariant,
+                                fontSize: 10, color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -309,7 +367,6 @@ class _HeroHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
 
-                  // Status info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,10 +374,8 @@ class _HeroHeader extends StatelessWidget {
                         Text(
                           'Overall Attendance',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant,
-                            letterSpacing: 0.5,
+                            fontSize: 11, fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant, letterSpacing: 0.5,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -341,8 +396,7 @@ class _HeroHeader extends StatelessWidget {
                                 child: Text(
                                   _statusMessage,
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11, fontWeight: FontWeight.w600,
                                     color: color,
                                   ),
                                   maxLines: 2,
@@ -353,7 +407,6 @@ class _HeroHeader extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        // Mini bar
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
@@ -385,7 +438,7 @@ class _HeroHeader extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CUSTOM RING PAINTER — smooth, capped arc
+//  CUSTOM RING PAINTER
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RingPainter extends CustomPainter {
@@ -393,7 +446,7 @@ class _RingPainter extends CustomPainter {
   final Color color;
   final Color trackColor;
 
-  _RingPainter({
+  const _RingPainter({
     required this.progress,
     required this.color,
     required this.trackColor,
@@ -405,28 +458,23 @@ class _RingPainter extends CustomPainter {
     final r      = size.width / 2 - 6;
     const stroke = 7.0;
 
-    // Track
     canvas.drawCircle(
-      center,
-      r,
-      Paint()
-        ..style   = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..color   = trackColor,
-    );
-
-    // Progress arc
-    final sweep = 2 * pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      -pi / 2,
-      sweep,
-      false,
+      center, r,
       Paint()
         ..style      = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..strokeCap   = StrokeCap.round
-        ..color       = color,
+        ..color      = trackColor,
+    );
+
+    final sweep = 2 * pi * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      -pi / 2, sweep, false,
+      Paint()
+        ..style      = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap  = StrokeCap.round
+        ..color      = color,
     );
   }
 
@@ -440,14 +488,14 @@ class _RingPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _QuickStatsRow extends StatelessWidget {
-  final List<MockSubject> subjects;
+  final List<Subject> subjects;
   const _QuickStatsRow({required this.subjects});
 
   @override
   Widget build(BuildContext context) {
     final cs     = Theme.of(context).colorScheme;
-    final safe   = subjects.where((s) => s.percentage >= 75).length;
-    final danger = subjects.where((s) => s.percentage < 75).length;
+    final safe   = subjects.where((s) => s.isSafe).length;
+    final danger = subjects.where((s) => !s.isSafe).length;
 
     return Row(
       children: [
@@ -507,8 +555,7 @@ class _StatChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 30,
-              height: 30,
+              width: 30, height: 30,
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(8),
@@ -519,18 +566,15 @@ class _StatChip extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: cs.onSurface,
-                height: 1,
+                fontSize: 20, fontWeight: FontWeight.w800,
+                color: cs.onSurface, height: 1,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
+                fontSize: 10, fontWeight: FontWeight.w500,
                 color: cs.onSurfaceVariant,
               ),
               overflow: TextOverflow.ellipsis,
@@ -543,11 +587,11 @@ class _StatChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SUBJECT CARD — individual subject tile  
+//  SUBJECT CARD — individual subject tile with swipe-to-delete
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SubjectCard extends StatelessWidget {
-  final MockSubject subject;
+  final Subject subject;
   const _SubjectCard({required this.subject});
 
   Color _statusColor(ColorScheme cs) {
@@ -560,7 +604,7 @@ class _SubjectCard extends StatelessWidget {
       subject.type == 'Lab' ? Icons.science_rounded : Icons.menu_book_rounded;
 
   String _bunkInfo() {
-    final margin = subject.attended - (0.75 * subject.total).ceil();
+    final margin = subject.bunkMargin;
     if (margin > 0)  return 'Can skip $margin';
     if (margin == 0) return 'No margin left';
     return 'Need ${-margin} more';
@@ -572,163 +616,175 @@ class _SubjectCard extends StatelessWidget {
     final color = _statusColor(cs);
     final isLab = subject.type == 'Lab';
 
-    return Material(
-      color: cs.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.pushNamed(context, AppRoutes.subjectDashboard),
-        borderRadius: BorderRadius.circular(16),
-        splashColor: cs.primary.withOpacity(0.08),
-        highlightColor: cs.primary.withOpacity(0.04),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              // ── Icon ──────────────────────────────────────────────
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: isLab
-                      ? cs.secondaryContainer
-                      : cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(
-                  _typeIcon,
-                  size: 22,
-                  color: isLab
-                      ? cs.onSecondaryContainer
-                      : cs.onPrimaryContainer,
-                ),
+    return Dismissible(
+      key: ValueKey(subject.key),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: cs.errorContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(Icons.delete_rounded, color: cs.onErrorContainer, size: 26),
+      ),
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Subject?'),
+            content: Text(
+              '"${subject.name}" and all its attendance data will be removed.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(width: 14),
-
-              // ── Info ──────────────────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      subject.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        // Type pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isLab
-                                ? cs.secondaryContainer
-                                : cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            subject.type,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: isLab
-                                  ? cs.onSecondaryContainer
-                                  : cs.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            '${subject.attended}/${subject.total} classes',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: cs.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Bunk status
-                    Row(
-                      children: [
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            _bunkInfo(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: color,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.error,
+                  foregroundColor: cs.onError,
                 ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // ── Percentage + Bar ──────────────────────────────────
-              SizedBox(
-                width: 60,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Percentage badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: color.withOpacity(0.2),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        '${subject.percentage.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Progress bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: subject.percentage / 100,
-                        backgroundColor: color.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                        minHeight: 4,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const Text('Delete'),
               ),
             ],
+          ),
+        );
+      },
+      onDismissed: (_) => AttendanceService.deleteSubject(subject),
+      child: Material(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.subjectDashboard),
+          borderRadius: BorderRadius.circular(16),
+          splashColor: cs.primary.withOpacity(0.08),
+          highlightColor: cs.primary.withOpacity(0.04),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // ── Icon ────────────────────────────────────────────────
+                Container(
+                  width: 46, height: 46,
+                  decoration: BoxDecoration(
+                    color: isLab ? cs.secondaryContainer : cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(
+                    _typeIcon, size: 22,
+                    color: isLab ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // ── Info ─────────────────────────────────────────────────
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subject.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isLab ? cs.secondaryContainer : cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              subject.type,
+                              style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w700,
+                                color: isLab ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              '${subject.attended}/${subject.total} classes',
+                              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Bunk margin indicator
+                      Row(
+                        children: [
+                          Container(
+                            width: 5, height: 5,
+                            decoration: BoxDecoration(
+                              color: color, shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _bunkInfo(),
+                              style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w600, color: color,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // ── Percentage + Bar ────────────────────────────────────
+                SizedBox(
+                  width: 60,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+                        ),
+                        child: Text(
+                          '${subject.percentage.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w800, color: color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: subject.percentage / 100,
+                          backgroundColor: color.withOpacity(0.1),
+                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                          minHeight: 4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -762,24 +818,19 @@ class _TimetableBanner extends StatelessWidget {
               ],
             ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: cs.primary.withOpacity(0.15),
-              width: 0.8,
-            ),
+            border: Border.all(color: cs.primary.withOpacity(0.15), width: 0.8),
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 40, height: 40,
                 decoration: BoxDecoration(
                   color: cs.primaryContainer,
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
                   Icons.calendar_month_rounded,
-                  color: cs.onPrimaryContainer,
-                  size: 20,
+                  color: cs.onPrimaryContainer, size: 20,
                 ),
               ),
               const SizedBox(width: 14),
@@ -790,25 +841,20 @@ class _TimetableBanner extends StatelessWidget {
                     Text(
                       'View Timetable',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14, fontWeight: FontWeight.w700,
                         color: cs.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'See your full weekly schedule',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
               Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
+                Icons.arrow_forward_ios_rounded, size: 14,
                 color: cs.primary.withOpacity(0.7),
               ),
             ],
@@ -840,8 +886,7 @@ class _IconBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 38, height: 38,
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(11),
