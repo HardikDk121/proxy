@@ -23,6 +23,7 @@ dependencies:
   # ── PDF Timetable Scanner ─────────────────────────────────────────────────────
   file_picker: ^8.1.7                  # Native file browser (cross-platform)
   syncfusion_flutter_pdf: ^28.2.12     # Reliable PDF text extraction
+  flutter_svg: ^2.2.4
 
 dev_dependencies:
   flutter_test:

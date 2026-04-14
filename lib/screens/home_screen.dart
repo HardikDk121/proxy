@@ -8,8 +8,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/subject.dart';
+import '../models/timetable_slot.dart';
 import '../routes/app_routes.dart';
 import '../services/attendance_service.dart';
+import '../services/timetable_service.dart';
 import '../widgets/add_subject_screen.dart';
 import '../../main.dart' show themeModeNotifier;
 
@@ -34,15 +36,21 @@ class HomeScreen extends StatelessWidget {
     return ValueListenableBuilder<Box<Subject>>(
       valueListenable: AttendanceService.listenable,
       builder: (context, box, _) {
-        final subjects = box.values.toList();
+        return ValueListenableBuilder<Box<TimetableSlot>>(
+          valueListenable: TimetableService.listenable,
+          builder: (context, timetableBox, _) {
+            final subjects = box.values.toList();
+            
+            final int today = DateTime.now().weekday;
+            final List<TimetableSlot> todaySlots = TimetableService.getWeekMap()[today] ?? [];
 
-        final attended = subjects.fold(0, (s, e) => s + e.attended);
-        final total    = subjects.fold(0, (s, e) => s + e.total);
-        final overallPct = total == 0 ? 0.0 : (attended / total) * 100;
+            final attended = subjects.fold(0, (s, e) => s + e.attended);
+            final total    = subjects.fold(0, (s, e) => s + e.total);
+            final overallPct = total == 0 ? 0.0 : (attended / total) * 100;
 
-        return Scaffold(
-          body: subjects.isEmpty
-              ? _EmptyState(greeting: _greeting)
+            return Scaffold(
+              body: subjects.isEmpty
+                  ? _EmptyState(greeting: _greeting)
               : CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
@@ -66,6 +74,25 @@ class HomeScreen extends StatelessWidget {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       sliver: SliverToBoxAdapter(child: _TimetableBanner()),
+                    ),
+
+                    // ── Today's Classes Header ───────────────────────────
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: _TodaysClassesHeader(),
+                      ),
+                    ),
+
+                    // ── Today's Classes List ─────────────────────────────
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _TodaysClassesList(
+                          slots: todaySlots, 
+                          subjects: subjects,
+                        ),
+                      ),
                     ),
 
                     // ── Section Title ────────────────────────────────────
@@ -100,6 +127,8 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3),
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -213,6 +242,166 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TODAY'S CLASSES HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TodaysClassesHeader extends StatelessWidget {
+  const _TodaysClassesHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs    = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Container(
+          width: 3, height: 18,
+          decoration: BoxDecoration(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Today\'s Classes',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TODAY'S CLASSES LIST
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TodaysClassesList extends StatelessWidget {
+  final List<TimetableSlot> slots;
+  final List<Subject> subjects;
+
+  const _TodaysClassesList({required this.slots, required this.subjects});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    
+    if (slots.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.event_available_rounded, color: cs.primary, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              'No classes scheduled for today.\nEnjoy your break!',
+              style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w500,
+                color: cs.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 110,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: slots.length,
+        itemBuilder: (context, index) {
+          final slot = slots[index];
+          final isLab = slot.type == 'Lab';
+
+          return Container(
+            width: 160,
+            margin: const EdgeInsets.only(right: 12),
+            child: Material(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  try {
+                    final subject = subjects.firstWhere(
+                      (s) => s.name.toLowerCase() == slot.subjectName.toLowerCase()
+                    );
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.subjectDashboard,
+                      arguments: subject,
+                    );
+                  } catch (_) {}
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded, size: 14, color: cs.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              slot.time,
+                              style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700,
+                                color: cs.primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: Text(
+                          slot.subjectName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isLab ? cs.secondaryContainer : cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          slot.type,
+                          style: TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: isLab ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -1,10 +1,4 @@
-// lib/models/subject.g.dart
-// ─────────────────────────────────────────────────────────────────────────────
-// GENERATED CODE — DO NOT EDIT BY HAND.
-// Equivalent to what `flutter pub run build_runner build` produces.
-// If you add/change @HiveField fields, re-run the generator and replace
-// this file with the updated output.
-// ─────────────────────────────────────────────────────────────────────────────
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'subject.dart';
 
@@ -14,7 +8,7 @@ part of 'subject.dart';
 
 class SubjectAdapter extends TypeAdapter<Subject> {
   @override
-  final int typeId = kSubjectTypeId; // 0
+  final int typeId = 0;
 
   @override
   Subject read(BinaryReader reader) {
@@ -34,7 +28,7 @@ class SubjectAdapter extends TypeAdapter<Subject> {
   @override
   void write(BinaryWriter writer, Subject obj) {
     writer
-      ..writeByte(5) // field count
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)

@@ -87,6 +87,38 @@ class TimetableService {
     }
   }
 
+  /// Replaces fields on an existing slot and saves.
+  static Future<void> updateSlot(
+    TimetableSlot slot, {
+    int? day,
+    String? subjectName,
+    String? type,
+    String? time,
+    String? duration,
+  }) async {
+    try {
+      if (day != null) slot.day = day;
+      if (subjectName != null) slot.subjectName = subjectName;
+      if (type != null) slot.type = type;
+      if (time != null) slot.time = time;
+      if (duration != null) slot.duration = duration;
+      await slot.save();
+    } catch (e, st) {
+      debugPrint('[TimetableService] updateSlot error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  /// Deletes a specific slot.
+  static Future<void> deleteSlot(TimetableSlot slot) async {
+    try {
+      await slot.delete();
+    } catch (e, st) {
+      debugPrint('[TimetableService] deleteSlot error: $e\n$st');
+      rethrow;
+    }
+  }
+
   /// Deletes ALL slots — used in Settings / "Clear timetable".
   static Future<void> deleteAll() async {
     try {

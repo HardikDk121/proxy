@@ -1,9 +1,4 @@
-// lib/models/timetable_slot.g.dart
-// ─────────────────────────────────────────────────────────────────────────────
-// GENERATED CODE — mirrors what `flutter pub run build_runner build` produces.
-// If you add/change @HiveField fields, re-run the generator and replace this
-// file with the updated output (or update the field mappings manually).
-// ─────────────────────────────────────────────────────────────────────────────
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'timetable_slot.dart';
 
@@ -13,7 +8,7 @@ part of 'timetable_slot.dart';
 
 class TimetableSlotAdapter extends TypeAdapter<TimetableSlot> {
   @override
-  final int typeId = kTimetableSlotTypeId; // 1
+  final int typeId = 1;
 
   @override
   TimetableSlot read(BinaryReader reader) {
@@ -22,18 +17,20 @@ class TimetableSlotAdapter extends TypeAdapter<TimetableSlot> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return TimetableSlot(
-      day:         fields[0] as int,
+      day: fields[0] as int,
       subjectName: fields[1] as String,
-      type:        fields[2] as String,
-      time:        fields[3] as String,
-      duration:    fields[4] as String,
+      type: fields[2] as String,
+      time: fields[3] as String,
+      duration: fields[4] as String,
+      lastLoggedDate: fields[5] as DateTime?,
+      lastLoggedStatus: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TimetableSlot obj) {
     writer
-      ..writeByte(5) // field count
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.day)
       ..writeByte(1)
@@ -43,7 +40,11 @@ class TimetableSlotAdapter extends TypeAdapter<TimetableSlot> {
       ..writeByte(3)
       ..write(obj.time)
       ..writeByte(4)
-      ..write(obj.duration);
+      ..write(obj.duration)
+      ..writeByte(5)
+      ..write(obj.lastLoggedDate)
+      ..writeByte(6)
+      ..write(obj.lastLoggedStatus);
   }
 
   @override

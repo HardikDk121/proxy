@@ -43,6 +43,10 @@ class RouteGenerator {
   }
 
   static void registerRoutes() {
+    // Clear first — prevents duplicate entries on hot restart (static list
+    // persists across hot restarts since the Dart VM is not restarted).
+    _routes.clear();
+
     //route(AppRoutes.splash, (_) => const SplashScreen());
     route(AppRoutes.home, (_) => const HomeScreen());
 
@@ -62,7 +66,14 @@ class RouteGenerator {
         (_) => const BunkPredictorScreen());
 
     route(AppRoutes.subjectDashboard,
-      (s) => SubjectDashboardScreen(subject: s.arguments as Subject),
+      (s) {
+        final subject = s.arguments;
+        if (subject is! Subject) {
+          // Defensive guard: should never happen from the app's own navigation.
+          return const _PlaceholderScreen(title: 'Subject not found');
+        }
+        return SubjectDashboardScreen(subject: subject);
+      },
     );
   }
 

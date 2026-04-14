@@ -38,6 +38,12 @@ class TimetableSlot extends HiveObject {
   @HiveField(4)
   late String duration;
 
+  @HiveField(5)
+  DateTime? lastLoggedDate;
+
+  @HiveField(6)
+  String? lastLoggedStatus;
+
   // ── Constructor ────────────────────────────────────────────────────────────
 
   TimetableSlot({
@@ -46,6 +52,8 @@ class TimetableSlot extends HiveObject {
     required this.type,
     required this.time,
     required this.duration,
+    this.lastLoggedDate,
+    this.lastLoggedStatus,
   });
 
   // ── Helpers ────────────────────────────────────────────────────────────────

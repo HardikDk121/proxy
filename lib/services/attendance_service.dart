@@ -154,6 +154,54 @@ class AttendanceService {
     }
   }
 
+  // ── ATTENDANCE BY NAME ─────────────────────────────────────────────────────
+
+  /// Finds a subject by [subjectName] (case-sensitive) and records attendance.
+  /// If [isPresent] is true → increments both `attended` and `total`.
+  /// If [isPresent] is false → increments only `total` (bunked).
+  /// Silently no-ops if the subject is not found (e.g. Break / Free Period).
+  static Future<void> markAttendance(
+    String subjectName, {
+    required bool isPresent,
+  }) async {
+    try {
+      final subject = _openBox.values
+          .cast<Subject?>()
+          .firstWhere((s) => s?.name == subjectName, orElse: () => null);
+      if (subject == null) return; // Break / Free Period — ignore
+      if (isPresent) {
+        await markAttended(subject);
+      } else {
+        await markAbsent(subject);
+      }
+    } catch (e, st) {
+      debugPrint('[AttendanceService] markAttendance error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  /// Reverses a previously recorded attendance entry.
+  /// If [wasPresent] is true → decrements both `attended` and `total`.
+  /// If [wasPresent] is false → decrements only `total`.
+  /// Counts are clamped to 0 to prevent negative values.
+  static Future<void> undoAttendance(
+    String subjectName, {
+    required bool wasPresent,
+  }) async {
+    try {
+      final subject = _openBox.values
+          .cast<Subject?>()
+          .firstWhere((s) => s?.name == subjectName, orElse: () => null);
+      if (subject == null) return;
+      if (wasPresent && subject.attended > 0) subject.attended -= 1;
+      if (subject.total > 0) subject.total -= 1;
+      await subject.save();
+    } catch (e, st) {
+      debugPrint('[AttendanceService] undoAttendance error: $e\n$st');
+      rethrow;
+    }
+  }
+
   // ── CLOSE ──────────────────────────────────────────────────────────────────
 
   /// Closes the box. Usually not needed — Hive closes boxes on app exit.

@@ -69,23 +69,51 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   void _markPresent() {
     HapticFeedback.mediumImpact();
+    // Cache previous state for undo
+    final prevAttended = widget.subject.attended;
+    final prevTotal = widget.subject.total;
     setState(() {
       widget.subject.attended += 1;
       widget.subject.total += 1;
       widget.subject.save(); // persist to Hive box
       _animateProgress();
     });
-    _showSnack('✓ Present marked', Theme.of(context).colorScheme.secondary);
+    _showSnack(
+      '✓ Marked Present',
+      Theme.of(context).colorScheme.secondary,
+      onUndo: () {
+        setState(() {
+          widget.subject.attended = prevAttended;
+          widget.subject.total = prevTotal;
+          widget.subject.save();
+          _animateProgress();
+        });
+      },
+    );
   }
 
   void _markAbsent() {
     HapticFeedback.mediumImpact();
+    // Cache previous state for undo
+    final prevAttended = widget.subject.attended;
+    final prevTotal = widget.subject.total;
     setState(() {
       widget.subject.total += 1;
       widget.subject.save(); // persist to Hive box
       _animateProgress();
     });
-    _showSnack('✗ Absent marked', Theme.of(context).colorScheme.error);
+    _showSnack(
+      '✗ Marked Absent',
+      Theme.of(context).colorScheme.error,
+      onUndo: () {
+        setState(() {
+          widget.subject.attended = prevAttended;
+          widget.subject.total = prevTotal;
+          widget.subject.save();
+          _animateProgress();
+        });
+      },
+    );
   }
 
   void _animateProgress() {
@@ -95,7 +123,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
     _progressCtrl.forward();
   }
 
-  void _showSnack(String msg, Color color) {
+  void _showSnack(String msg, Color color, {VoidCallback? onUndo}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -103,7 +131,14 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 4),
+      action: onUndo != null
+          ? SnackBarAction(
+              label: 'UNDO',
+              textColor: Colors.white,
+              onPressed: onUndo,
+            )
+          : null,
     ));
   }
 
@@ -216,42 +251,57 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.fromLTRB(56, 0, 48, 16),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.subject.name,
-              style: TextStyle(
-                color: cs.onSurface,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _TypeChip(type: widget.subject.type),
-                const SizedBox(width: 8),
-                Text(
-                  '${widget.subject.attended}/${widget.subject.total} classes',
-                  style: TextStyle(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+        titlePadding: const EdgeInsetsDirectional.only(
+          start: 56,
+          bottom: 14,
+          end: 16,
+        ),
+        centerTitle: false,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomLeft,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                widget.subject.name,
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
                 ),
-              ],
-            ),
-          ],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _TypeChip(type: widget.subject.type),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '${widget.subject.attended}/${widget.subject.total} classes',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   // ── Progress Card ────────────────────────────────────────────────────────
 

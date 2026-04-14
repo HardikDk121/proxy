@@ -30,7 +30,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
   final _nameController = TextEditingController();
   final _durationCtrl = TextEditingController(text: '1.0');
 
-  String _type = 'Theory';
+  String _selectedType = 'Theory';
   bool _saving = false;
 
   @override
@@ -41,8 +41,14 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
   }
 
   void _pickType(String type) => setState(() {
-    _type = type;
-    _durationCtrl.text = type == 'Theory' ? '1.0' : '2.0';
+    _selectedType = type;
+    if (type == 'Theory') {
+      _durationCtrl.text = '1.0';
+    } else if (type == 'Lab') {
+      _durationCtrl.text = '2.0';
+    } else {
+      _durationCtrl.text = '1.0'; // Elective default
+    }
   });
 
   Future<void> _save() async {
@@ -52,7 +58,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
     try {
       final subject = Subject(
         name: _nameController.text.trim(),
-        type: _type,
+        type: _selectedType,
         durationHours: double.parse(_durationCtrl.text),
       );
 
@@ -207,26 +213,30 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
             // ── Type Selector ─────────────────────────────────────────────
             _sectionLabel('TYPE', textSecond),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                Expanded(
-                  child: _typeChip(
-                    type: 'Theory',
-                    icon: Icons.menu_book_rounded,
-                    primaryColor: primaryColor,
-                    surfaceColor: surfaceColor,
-                    textSecond: textSecond,
-                  ),
+                _buildChoiceChip(
+                  label: 'Theory',
+                  icon: Icons.menu_book_rounded,
+                  selectedColor: cs.primaryContainer,
+                  onSelectedColor: cs.onPrimaryContainer,
+                  cs: cs,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _typeChip(
-                    type: 'Lab',
-                    icon: Icons.science_rounded,
-                    primaryColor: primaryColor,
-                    surfaceColor: surfaceColor,
-                    textSecond: textSecond,
-                  ),
+                _buildChoiceChip(
+                  label: 'Lab',
+                  icon: Icons.science_rounded,
+                  selectedColor: cs.secondaryContainer,
+                  onSelectedColor: cs.onSecondaryContainer,
+                  cs: cs,
+                ),
+                _buildChoiceChip(
+                  label: 'Elective',
+                  icon: Icons.psychology_alt_rounded,
+                  selectedColor: cs.tertiaryContainer,
+                  onSelectedColor: cs.onTertiaryContainer,
+                  cs: cs,
                 ),
               ],
             ),
@@ -346,57 +356,43 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
     ),
   );
 
-  Widget _typeChip({
-    required String type,
+  Widget _buildChoiceChip({
+    required String label,
     required IconData icon,
-    required Color primaryColor,
-    required Color surfaceColor,
-    required Color textSecond,
+    required Color selectedColor,
+    required Color onSelectedColor,
+    required ColorScheme cs,
   }) {
-    final sel = _type == type;
-    return GestureDetector(
-      onTap: () => _pickType(type),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: sel ? primaryColor : surfaceColor,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: sel
-              ? [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 22, color: sel ? Colors.black : textSecond),
-            const SizedBox(height: 6),
-            Text(
-              type,
-              style: TextStyle(
-                color: sel ? Colors.black : textSecond,
-                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 13,
-              ),
+    final isSelected = _selectedType == label;
+    return ChoiceChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? onSelectedColor : cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? onSelectedColor : cs.onSurfaceVariant,
             ),
-            Text(
-              type == 'Theory' ? '1 hr' : '2 hrs',
-              style: TextStyle(
-                color: sel
-                    ? Colors.black.withValues(alpha: 0.6)
-                    : textSecond.withValues(alpha: 0.45),
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+      selected: isSelected,
+      onSelected: (_) => _pickType(label),
+      backgroundColor: cs.surfaceContainerHigh,
+      selectedColor: selectedColor,
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      showCheckmark: false,
     );
   }
 
