@@ -1,178 +1,15 @@
-// lib/screens/timetable_screen.dart
+// lib/screens/time_table_screen.dart
+// ─────────────────────────────────────────────────────────────────────────────
+// TimetableScreen — fully wired to Hive via ValueListenableBuilder.
+// All mock data removed; slots come from TimetableService (hive box: 'timetable').
+// Use the "Import PDF" FAB to populate the box via PdfTimetableParser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-
-class TimetableSlot {
-  final String subjectName;
-  final String type; // 'Theory' | 'Lab' | 'Elective'
-  final String time;
-  final String duration;
-  final int attended;
-  final int total;
-
-  const TimetableSlot({
-    required this.subjectName,
-    required this.type,
-    required this.time,
-    required this.duration,
-    required this.attended,
-    required this.total,
-  });
-
-  double get percentage => total == 0 ? 0 : (attended / total) * 100;
-}
-
-const Map<int, List<TimetableSlot>> mockTimetable = {
-  1: [
-    TimetableSlot(
-      subjectName: 'Data Structures',
-      type: 'Theory',
-      time: '9:00 AM',
-      duration: '1h',
-      attended: 38,
-      total: 46,
-    ),
-    TimetableSlot(
-      subjectName: 'Java Lab',
-      type: 'Lab',
-      time: '11:00 AM',
-      duration: '2h',
-      attended: 27,
-      total: 39,
-    ),
-    TimetableSlot(
-      subjectName: 'DBMS',
-      type: 'Theory',
-      time: '1:00 PM',
-      duration: '1h',
-      attended: 31,
-      total: 41,
-    ),
-    TimetableSlot(
-      subjectName: 'Software Engg',
-      type: 'Theory',
-      time: '3:00 PM',
-      duration: '1h',
-      attended: 44,
-      total: 48,
-    ),
-  ],
-  2: [
-    TimetableSlot(
-      subjectName: 'Computer Networks',
-      type: 'Theory',
-      time: '10:00 AM',
-      duration: '1h',
-      attended: 29,
-      total: 38,
-    ),
-    TimetableSlot(
-      subjectName: 'DBMS',
-      type: 'Theory',
-      time: '12:00 PM',
-      duration: '1h',
-      attended: 31,
-      total: 41,
-    ),
-    TimetableSlot(
-      subjectName: 'OS Lab',
-      type: 'Lab',
-      time: '2:00 PM',
-      duration: '2h',
-      attended: 22,
-      total: 32,
-    ),
-  ],
-  3: [
-    TimetableSlot(
-      subjectName: 'Data Structures',
-      type: 'Theory',
-      time: '9:00 AM',
-      duration: '1h',
-      attended: 38,
-      total: 46,
-    ),
-    TimetableSlot(
-      subjectName: 'Software Engg',
-      type: 'Theory',
-      time: '10:00 AM',
-      duration: '1h',
-      attended: 44,
-      total: 48,
-    ),
-    TimetableSlot(
-      subjectName: 'Operating Systems',
-      type: 'Theory',
-      time: '12:00 PM',
-      duration: '1h',
-      attended: 14,
-      total: 20,
-    ),
-    TimetableSlot(
-      subjectName: 'Open Elective',
-      type: 'Elective',
-      time: '3:00 PM',
-      duration: '1h',
-      attended: 18,
-      total: 22,
-    ),
-  ],
-  4: [
-    TimetableSlot(
-      subjectName: 'Computer Networks',
-      type: 'Theory',
-      time: '11:00 AM',
-      duration: '1h',
-      attended: 29,
-      total: 38,
-    ),
-    TimetableSlot(
-      subjectName: 'Java Lab',
-      type: 'Lab',
-      time: '2:00 PM',
-      duration: '2h',
-      attended: 27,
-      total: 39,
-    ),
-  ],
-  5: [
-    TimetableSlot(
-      subjectName: 'Data Structures',
-      type: 'Theory',
-      time: '9:00 AM',
-      duration: '1h',
-      attended: 38,
-      total: 46,
-    ),
-    TimetableSlot(
-      subjectName: 'DBMS',
-      type: 'Theory',
-      time: '11:00 AM',
-      duration: '1h',
-      attended: 31,
-      total: 41,
-    ),
-    TimetableSlot(
-      subjectName: 'Operating Systems',
-      type: 'Theory',
-      time: '12:00 PM',
-      duration: '1h',
-      attended: 14,
-      total: 20,
-    ),
-    TimetableSlot(
-      subjectName: 'OS Lab',
-      type: 'Lab',
-      time: '2:00 PM',
-      duration: '2h',
-      attended: 22,
-      total: 32,
-    ),
-  ],
-  6: [],
-  7: [],
-};
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/timetable_slot.dart';
+import '../services/timetable_service.dart';
+import '../services/pdf_timetable_parser.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -189,6 +26,7 @@ class _TimetableScreenState extends State<TimetableScreen>
   final DateTime _today = DateTime.now();
   late int _selectedWeekday;
   bool _isWeekView = false;
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -213,242 +51,371 @@ class _TimetableScreenState extends State<TimetableScreen>
     return DateTime(_today.year, _today.month, _today.day - diff);
   }
 
-  List<TimetableSlot> get _selectedSlots =>
-      mockTimetable[_selectedWeekday] ?? [];
-
   String get _monthLabel {
     const months = [
       '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
     ];
     return '${months[_today.month]} ${_today.year}';
   }
 
+  Future<void> _importPdf() async {
+    setState(() => _isImporting = true);
+    try {
+      await PdfTimetableParser.pickAndParse(context);
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
-    final textScale = mq.textScaler.scale(1.0);
-    final statusBarH = mq.padding.top;
+    // Wrap the entire screen in ValueListenableBuilder so any box change
+    // (import / delete) automatically triggers a full rebuild.
+    return ValueListenableBuilder<Box<TimetableSlot>>(
+      valueListenable: TimetableService.listenable,
+      builder: (context, box, _) {
+        final timetable = TimetableService.getWeekMap();
+        final selectedSlots = timetable[_selectedWeekday] ?? [];
 
-    // Heights for the bottom widget sub-components
-    final tabBarHeight = 48.0 * textScale;
-    final weekStripHeight = 70.0 * textScale;
+        final cs = Theme.of(context).colorScheme;
+        final mq = MediaQuery.of(context);
+        final textScale = mq.textScaler.scale(1.0);
+        final statusBarH = mq.padding.top;
 
-    // When in week view, the _WeekStrip collapses away (via AnimatedSize)
-    // so we exclude its height + gap from the layout math.
-    final bottomBarHeight = _isWeekView
-        ? tabBarHeight +
-              8 +
-              10 // tab bar + top gap + bottom gap
-        : tabBarHeight + 8 + weekStripHeight + 10; // + week strip
+        final tabBarHeight = 48.0 * textScale;
+        final weekStripHeight = 70.0 * textScale;
 
-    // Subtitle content area: month label + "Your weekly schedule" + padding
-    final subtitleAreaHeight = (80.0 * textScale).clamp(70.0, 120.0);
+        final bottomBarHeight = _isWeekView
+            ? tabBarHeight + 8 + 10
+            : tabBarHeight + 8 + weekStripHeight + 10;
 
-    // expandedHeight = toolbar + subtitle area + bottom widget
-    // This guarantees the subtitle sits between the toolbar and
-    // the bottom widget with zero overlap.
-    final expandedHeight =
-        kToolbarHeight + subtitleAreaHeight + bottomBarHeight;
+        final subtitleAreaHeight = (80.0 * textScale).clamp(70.0, 120.0);
+        final expandedHeight =
+            kToolbarHeight + subtitleAreaHeight + bottomBarHeight;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: expandedHeight,
-            pinned: true,
-            floating: false,
-            forceElevated: innerBoxIsScrolled,
-            backgroundColor: cs.primaryContainer,
-            surfaceTintColor: Colors.transparent,
-            foregroundColor: cs.onPrimaryContainer,
-            // Built-in title — renders in the toolbar area and
-            // stays visible when collapsed.
-            title: Text(
-              'Timetable',
-              style: TextStyle(
-                color: cs.onPrimaryContainer,
-                fontWeight: FontWeight.w700,
-                fontSize: 20,
-              ),
-            ),
-            centerTitle: false,
-            actions: [
-              IconButton(
-                icon: Icon(Icons.today_rounded, color: cs.onPrimaryContainer),
-                tooltip: 'Go to today',
-                onPressed: () =>
-                    setState(() => _selectedWeekday = _today.weekday),
-              ),
-              SizedBox(width: mq.size.width * 0.02),
-            ],
-            // Manual flexibleSpace — positions the subtitle text
-            // precisely between the toolbar and the bottom widget.
-            // No FlexibleSpaceBar: avoids its internal title-positioning
-            // logic which was causing the collision.
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                // constraints.maxHeight = current visible height of
-                // the SliverAppBar (shrinks as user scrolls up).
-                // Fade out the subtitle as the app bar collapses.
-                final currentHeight = constraints.maxHeight;
-                final fullyExpanded = expandedHeight + statusBarH;
-                final collapsed = kToolbarHeight + statusBarH + bottomBarHeight;
-                final expansionFraction =
-                    ((currentHeight - collapsed) / (fullyExpanded - collapsed))
-                        .clamp(0.0, 1.0);
-
-                return Container(
-                  color: cs.primaryContainer,
-                  child: Stack(
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      // Subtitle text — anchored from the bottom only.
-                      // No top constraint: avoids the shrinking-box
-                      // overflow that occurred when the SliverAppBar
-                      // collapsed and crushed the vertical space.
-                      Positioned(
-                        left: 20,
-                        right: 80,
-                        bottom: bottomBarHeight + 8,
-                        height: subtitleAreaHeight,
-                        child: ClipRect(
-                          child: Opacity(
-                            opacity: expansionFraction,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _monthLabel,
-                                  style: TextStyle(
-                                    color: cs.onPrimaryContainer.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Your weekly schedule',
-                                  style: TextStyle(
-                                    color: cs.onPrimaryContainer,
-                                    fontSize: 22 * textScale.clamp(0.8, 1.3),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+        return Scaffold(
+          backgroundColor: cs.surface,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                expandedHeight: expandedHeight,
+                pinned: true,
+                floating: false,
+                forceElevated: innerBoxIsScrolled,
+                backgroundColor: cs.primaryContainer,
+                surfaceTintColor: Colors.transparent,
+                foregroundColor: cs.onPrimaryContainer,
+                title: Text(
+                  'Timetable',
+                  style: TextStyle(
+                    color: cs.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+                centerTitle: false,
+                actions: [
+                  // Clear timetable
+                  if (box.isNotEmpty)
+                    IconButton(
+                      icon: Icon(Icons.delete_sweep_rounded,
+                          color: cs.onPrimaryContainer),
+                      tooltip: 'Clear timetable',
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Clear Timetable?'),
+                            content: const Text(
+                              'All imported slots will be deleted. You can re-import from PDF at any time.',
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: cs.error,
+                                  foregroundColor: cs.onError,
+                                ),
+                                child: const Text('Clear'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await TimetableService.deleteAll();
+                        }
+                      },
+                    ),
+                  IconButton(
+                    icon: Icon(Icons.today_rounded,
+                        color: cs.onPrimaryContainer),
+                    tooltip: 'Go to today',
+                    onPressed: () =>
+                        setState(() => _selectedWeekday = _today.weekday),
+                  ),
+                  SizedBox(width: mq.size.width * 0.02),
+                ],
+                flexibleSpace: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final currentHeight = constraints.maxHeight;
+                    final fullyExpanded = expandedHeight + statusBarH;
+                    final collapsed =
+                        kToolbarHeight + statusBarH + bottomBarHeight;
+                    final expansionFraction =
+                        ((currentHeight - collapsed) /
+                                (fullyExpanded - collapsed))
+                            .clamp(0.0, 1.0);
+
+                    return Container(
+                      color: cs.primaryContainer,
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          Positioned(
+                            left: 20,
+                            right: 80,
+                            bottom: bottomBarHeight + 8,
+                            height: subtitleAreaHeight,
+                            child: ClipRect(
+                              child: Opacity(
+                                opacity: expansionFraction,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _monthLabel,
+                                      style: TextStyle(
+                                        color: cs.onPrimaryContainer
+                                            .withValues(alpha: 0.7),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Your weekly schedule',
+                                      style: TextStyle(
+                                        color: cs.onPrimaryContainer,
+                                        fontSize:
+                                            22 * textScale.clamp(0.8, 1.3),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                bottom: PreferredSize(
+                  preferredSize: Size.fromHeight(bottomBarHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: mq.size.width * 0.04,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: cs.onPrimaryContainer
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.all(3),
+                          child: TabBar(
+                            controller: _tabCtrl,
+                            indicator: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            labelColor: cs.primary,
+                            unselectedLabelColor:
+                                cs.onPrimaryContainer.withValues(alpha: 0.75),
+                            labelStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            tabs: const [
+                              Tab(text: 'Day view'),
+                              Tab(text: 'Week view'),
+                            ],
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        alignment: Alignment.topCenter,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 200),
+                          opacity: _isWeekView ? 0.0 : 1.0,
+                          child: _isWeekView
+                              ? const SizedBox.shrink()
+                              : _WeekStrip(
+                                  today: _today,
+                                  weekStart: _weekStart,
+                                  selectedWeekday: _selectedWeekday,
+                                  timetable: timetable,
+                                  onDayTap: (wd) =>
+                                      setState(() => _selectedWeekday = wd),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                     ],
                   ),
-                );
-              },
-            ),
-            bottom: PreferredSize(
-              preferredSize: Size.fromHeight(bottomBarHeight),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // View toggle pills
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: mq.size.width * 0.04,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: cs.onPrimaryContainer.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: TabBar(
-                        controller: _tabCtrl,
-                        indicator: BoxDecoration(
-                          color: cs.surface,
-                          borderRadius: BorderRadius.circular(17),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: cs.primary,
-                        unselectedLabelColor: cs.onPrimaryContainer.withValues(
-                          alpha: 0.75,
-                        ),
-                        labelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        tabs: const [
-                          Tab(text: 'Day view'),
-                          Tab(text: 'Week view'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Smoothly collapse the week strip when in Week view
-                  // to avoid showing duplicate day headers.
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topCenter,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: _isWeekView ? 0.0 : 1.0,
-                      child: _isWeekView
-                          ? const SizedBox.shrink()
-                          : _WeekStrip(
-                              today: _today,
-                              weekStart: _weekStart,
-                              selectedWeekday: _selectedWeekday,
-                              timetable: mockTimetable,
-                              onDayTap: (wd) =>
-                                  setState(() => _selectedWeekday = wd),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                ),
               ),
+            ],
+            body: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                box.isEmpty
+                    ? _EmptyTimetable(
+                        isImporting: _isImporting,
+                        onImport: _importPdf,
+                      )
+                    : _DayView(
+                        weekday: _selectedWeekday,
+                        today: _today,
+                        slots: selectedSlots,
+                      ),
+                box.isEmpty
+                    ? _EmptyTimetable(
+                        isImporting: _isImporting,
+                        onImport: _importPdf,
+                      )
+                    : _WeekGridView(
+                        timetable: timetable,
+                        today: _today,
+                        weekStart: _weekStart,
+                        onCellTap: (wd) {
+                          setState(() {
+                            _selectedWeekday = wd;
+                            _tabCtrl.animateTo(0);
+                          });
+                        },
+                      ),
+              ],
             ),
           ),
-        ],
-        body: TabBarView(
-          controller: _tabCtrl,
+          // Import PDF button
+          floatingActionButton: _isImporting
+              ? FloatingActionButton.extended(
+                  onPressed: null,
+                  icon: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                  label: const Text('Importing…'),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: _importPdf,
+                  icon: const Icon(Icons.upload_file_rounded, size: 20),
+                  label: Text(
+                    box.isEmpty ? 'Import PDF' : 'Re-import PDF',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+        );
+      },
+    );
+  }
+}
+
+// ── Empty State — no PDF imported yet ─────────────────────────────────────────
+
+class _EmptyTimetable extends StatelessWidget {
+  final bool isImporting;
+  final VoidCallback onImport;
+
+  const _EmptyTimetable({
+    required this.isImporting,
+    required this.onImport,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _DayView(
-              weekday: _selectedWeekday,
-              today: _today,
-              slots: _selectedSlots,
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.picture_as_pdf_rounded,
+                size: 42,
+                color: cs.onPrimaryContainer,
+              ),
             ),
-            _WeekGridView(
-              timetable: mockTimetable,
-              today: _today,
-              weekStart: _weekStart,
-              onCellTap: (wd) {
-                setState(() {
-                  _selectedWeekday = wd;
-                  _tabCtrl.animateTo(0);
-                });
-              },
+            const SizedBox(height: 24),
+            Text(
+              'No timetable yet',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Import your college timetable PDF to populate\nthe day and week views automatically.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: cs.onSurfaceVariant,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: isImporting ? null : onImport,
+              icon: isImporting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : const Icon(Icons.upload_file_rounded),
+              label: Text(isImporting ? 'Importing…' : 'Import PDF'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(200, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -485,8 +452,7 @@ class _WeekStrip extends StatelessWidget {
         children: List.generate(7, (i) {
           final wd = i + 1;
           final date = weekStart.add(Duration(days: i));
-          final isToday =
-              date.day == today.day &&
+          final isToday = date.day == today.day &&
               date.month == today.month &&
               date.year == today.year;
           final isSel = wd == selectedWeekday;
@@ -585,12 +551,7 @@ class _DayView extends StatelessWidget {
   String get _dayTitle {
     const names = [
       '',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
       'Sunday',
     ];
     return _isToday ? 'Today — ${names[weekday]}' : names[weekday];
@@ -664,10 +625,6 @@ class _TimelineSlot extends StatefulWidget {
 class _TimelineSlotState extends State<_TimelineSlot> {
   _LogStatus _status = _LogStatus.none;
 
-  /// Derives slot styling entirely from the theme's ColorScheme.
-  /// - Theory  → primary family
-  /// - Lab     → secondary (emerald) family
-  /// - Elective → tertiary family
   _SlotStyle _style(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     switch (widget.slot.type) {
@@ -698,35 +655,16 @@ class _TimelineSlotState extends State<_TimelineSlot> {
     }
   }
 
-  /// Attendance percentage text color — derived from theme semantic tokens.
-  Color _pctColor(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final p = widget.slot.percentage;
-    if (p >= 80) return cs.secondary; // safe — emerald
-    if (p >= 75) return cs.tertiary; // borderline — amber/tertiary
-    return cs.error; // danger
-  }
-
-  /// Attendance percentage background — derived from theme containers.
-  Color _pctBg(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final p = widget.slot.percentage;
-    if (p >= 80) return cs.secondaryContainer;
-    if (p >= 75) return cs.tertiaryContainer;
-    return cs.errorContainer;
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final style = _style(context);
-    final pct = widget.slot.percentage.toStringAsFixed(0);
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time column — uses constrained width via intrinsic sizing
+          // Time column
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 48, maxWidth: 64),
             child: Padding(
@@ -754,8 +692,8 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                   color: _status == _LogStatus.attended
                       ? cs.secondary
                       : _status == _LogStatus.bunked
-                      ? cs.error
-                      : style.accent,
+                          ? cs.error
+                          : style.accent,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -772,7 +710,7 @@ class _TimelineSlotState extends State<_TimelineSlot> {
 
           const SizedBox(width: 12),
 
-          // Card — expands to fill remaining space
+          // Card
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -801,7 +739,7 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Chips row — Wrap ensures no overflow on tiny screens
+                    // Chips row
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -818,25 +756,6 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                           fg: style.chipFg,
                           icon: Icons.schedule_rounded,
                           iconColor: style.accent,
-                        ),
-                        // Attendance % pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _pctBg(context),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$pct%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: _pctColor(context),
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -856,9 +775,8 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                                     foregroundColor: cs.secondary,
                                     backgroundColor: Colors.transparent,
                                     side: BorderSide(
-                                      color: cs.secondary.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      color:
+                                          cs.secondary.withValues(alpha: 0.6),
                                       width: 1.5,
                                     ),
                                     minimumSize: const Size(0, 42),
@@ -884,9 +802,7 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                                     foregroundColor: cs.error,
                                     backgroundColor: Colors.transparent,
                                     side: BorderSide(
-                                      color: cs.error.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      color: cs.error.withValues(alpha: 0.6),
                                       width: 1.5,
                                     ),
                                     minimumSize: const Size(0, 42),
@@ -908,9 +824,8 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                             children: [
                               Expanded(
                                 child: Container(
-                                  constraints: const BoxConstraints(
-                                    minHeight: 40,
-                                  ),
+                                  constraints:
+                                      const BoxConstraints(minHeight: 40),
                                   decoration: BoxDecoration(
                                     color: _status == _LogStatus.attended
                                         ? cs.secondaryContainer
@@ -939,18 +854,17 @@ class _TimelineSlotState extends State<_TimelineSlot> {
                               ),
                               const SizedBox(width: 8),
                               ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minHeight: 40,
-                                ),
+                                constraints:
+                                    const BoxConstraints(minHeight: 40),
                                 child: OutlinedButton(
-                                  onPressed: () =>
-                                      setState(() => _status = _LogStatus.none),
+                                  onPressed: () => setState(
+                                    () => _status = _LogStatus.none,
+                                  ),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: style.fg,
                                     side: BorderSide(
-                                      color: style.accent.withValues(
-                                        alpha: 0.4,
-                                      ),
+                                      color:
+                                          style.accent.withValues(alpha: 0.4),
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -979,7 +893,8 @@ class _TimelineSlotState extends State<_TimelineSlot> {
   }
 }
 
-// Helper: simple chip widget used in the slot card
+// ── Helper widgets ────────────────────────────────────────────────────────────
+
 class _Chip extends StatelessWidget {
   final String label;
   final Color bg, fg;
@@ -1107,40 +1022,21 @@ class _WeekGridView extends StatelessWidget {
   });
 
   static const _timeSlots = [
-    '9 AM',
-    '10 AM',
-    '11 AM',
-    '12 PM',
-    '1 PM',
-    '2 PM',
-    '3 PM',
-    '4 PM',
+    '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM',
   ];
   static const _timeKeys = [
-    '9:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '1:00 PM',
-    '2:00 PM',
-    '3:00 PM',
-    '4:00 PM',
+    '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+    '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
   ];
   static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  /// Minimum cell width below which we enable horizontal scroll
   static const double _minCellWidth = 40.0;
 
   TimetableSlot? _slotAt(int weekday, String timeKey) =>
       (timetable[weekday] ?? []).where((s) => s.time == timeKey).firstOrNull;
 
-  /// Slot background — dark elevated surface so pills pop against
-  /// the primaryContainer header when the grid scrolls underneath.
-  Color _slotBg(TimetableSlot s, BuildContext ctx) {
-    return Theme.of(ctx).colorScheme.surfaceContainerHigh;
-  }
+  Color _slotBg(TimetableSlot s, BuildContext ctx) =>
+      Theme.of(ctx).colorScheme.surfaceContainerHigh;
 
-  /// Slot text color — bright accent per type for high readability.
   Color _slotFg(TimetableSlot s, BuildContext ctx) {
     final cs = Theme.of(ctx).colorScheme;
     if (s.type == 'Lab') return cs.secondary;
@@ -1148,8 +1044,7 @@ class _WeekGridView extends StatelessWidget {
     return cs.primary;
   }
 
-  /// Slot border — 1px accent-colored outline for sharp recognition.
-  Color _slotBorderColor(TimetableSlot s, BuildContext ctx) {
+  Color _slotBorder(TimetableSlot s, BuildContext ctx) {
     final cs = Theme.of(ctx).colorScheme;
     if (s.type == 'Lab') return cs.secondary;
     if (s.type == 'Elective') return cs.tertiary;
@@ -1164,181 +1059,19 @@ class _WeekGridView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
-
-        // Reserve gutter width proportional to available space
-        // (minimum 40, max 56px) to keep time labels readable
         final gutterW = (availableWidth * 0.12).clamp(40.0, 56.0);
-
-        // Compute the cell width from remaining space
-        final columnsSpace = availableWidth - gutterW - 16; // 16 = h-padding
+        final columnsSpace = availableWidth - gutterW - 16;
         final computedCellW = columnsSpace / 7;
-
-        // If computed cell width is too tight, force a minimum and scroll
-        final cellW = computedCellW < _minCellWidth
-            ? _minCellWidth
-            : computedCellW;
+        final cellW =
+            computedCellW < _minCellWidth ? _minCellWidth : computedCellW;
         final needsHScroll = computedCellW < _minCellWidth;
-
         final totalWidth = gutterW + cellW * 7 + 16;
 
-        Widget gridContent = SizedBox(
-          width: needsHScroll ? totalWidth : null,
-          child: Column(
+        Widget buildGrid({bool scroll = false}) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header row ──────────────────────────────────────────
-              Row(
-                children: [
-                  SizedBox(width: gutterW),
-                  ...List.generate(7, (i) {
-                    final date = weekStart.add(Duration(days: i));
-                    final isToday =
-                        date.day == today.day &&
-                        date.month == today.month &&
-                        date.year == today.year;
-                    return SizedBox(
-                      width: needsHScroll ? cellW : null,
-                      child: needsHScroll
-                          ? _buildHeaderColumn(i, date, isToday, cs)
-                          : Expanded(
-                              child: _buildHeaderColumn(i, date, isToday, cs),
-                            ),
-                    );
-                  }),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(height: 0.5, color: cs.outlineVariant),
-              const SizedBox(height: 4),
-
-              // ── Time rows ────────────────────────────────────────────
-              ...List.generate(_timeSlots.length, (ti) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: gutterW,
-                        child: Text(
-                          _timeSlots[ti],
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      ...List.generate(7, (di) {
-                        final wd = di + 1;
-                        final slot = _slotAt(wd, _timeKeys[ti]);
-                        final date = weekStart.add(Duration(days: di));
-                        final isToday =
-                            date.day == today.day &&
-                            date.month == today.month &&
-                            date.year == today.year;
-
-                        final cellContent = Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                          child: slot != null
-                              ? GestureDetector(
-                                  onTap: () => onCellTap(wd),
-                                  child: Container(
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: _slotBg(slot, context),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: isToday
-                                            ? cs.error
-                                            : _slotBorderColor(
-                                                slot,
-                                                context,
-                                              ).withValues(alpha: 0.6),
-                                        width: isToday ? 1.5 : 1,
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                    ),
-                                    child: Text(
-                                      slot.subjectName
-                                          .split(' ')
-                                          .map((w) => w.isNotEmpty ? w[0] : '')
-                                          .take(3)
-                                          .join(),
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        color: _slotFg(slot, context),
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: isToday
-                                        ? cs.error.withValues(alpha: 0.08)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: isToday
-                                        ? Border.all(
-                                            color: cs.error.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                            width: 1,
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                        );
-
-                        if (needsHScroll) {
-                          return SizedBox(width: cellW, child: cellContent);
-                        }
-                        return Expanded(child: cellContent);
-                      }),
-                    ],
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 16),
-
-              // ── Legend ────────────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _LegendDot(color: cs.primary, label: 'Theory'),
-                  const SizedBox(width: 16),
-                  _LegendDot(color: cs.secondary, label: 'Lab'),
-                  const SizedBox(width: 16),
-                  _LegendDot(color: cs.tertiary, label: 'Elective'),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  'Tap a cell to see that day\'s full schedule',
-                  style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        );
-
-        // If we don't need horizontal scroll, just wrap in a vertical scroll
-        if (!needsHScroll) {
-          // When columns fit, we don't need a fixed SizedBox — let Expanded
-          // children in Row distribute evenly.
-          gridContent = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header row ──────────────────────────────────────────
+              // Header row
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
@@ -1346,13 +1079,13 @@ class _WeekGridView extends StatelessWidget {
                     SizedBox(width: gutterW),
                     ...List.generate(7, (i) {
                       final date = weekStart.add(Duration(days: i));
-                      final isToday =
-                          date.day == today.day &&
+                      final isToday = date.day == today.day &&
                           date.month == today.month &&
                           date.year == today.year;
-                      return Expanded(
-                        child: _buildHeaderColumn(i, date, isToday, cs),
-                      );
+                      final col = _buildHeaderColumn(i, date, isToday, cs);
+                      return scroll
+                          ? SizedBox(width: cellW, child: col)
+                          : Expanded(child: col);
                     }),
                   ],
                 ),
@@ -1364,7 +1097,7 @@ class _WeekGridView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
-              // ── Time rows ────────────────────────────────────────────
+              // Time rows
               ...List.generate(_timeSlots.length, (ti) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1390,74 +1123,71 @@ class _WeekGridView extends StatelessWidget {
                         final wd = di + 1;
                         final slot = _slotAt(wd, _timeKeys[ti]);
                         final date = weekStart.add(Duration(days: di));
-                        final isToday =
-                            date.day == today.day &&
+                        final isToday = date.day == today.day &&
                             date.month == today.month &&
                             date.year == today.year;
 
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 1.5,
-                            ),
-                            child: slot != null
-                                ? GestureDetector(
-                                    onTap: () => onCellTap(wd),
-                                    child: Container(
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: _slotBg(slot, context),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: isToday
-                                              ? cs.error
-                                              : _slotBorderColor(
-                                                  slot,
-                                                  context,
-                                                ).withValues(alpha: 0.6),
-                                          width: isToday ? 1.5 : 1,
-                                        ),
-                                      ),
-                                      alignment: Alignment.center,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 2,
-                                      ),
-                                      child: Text(
-                                        slot.subjectName
-                                            .split(' ')
-                                            .map(
-                                              (w) => w.isNotEmpty ? w[0] : '',
-                                            )
-                                            .take(3)
-                                            .join(),
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: _slotFg(slot, context),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  )
-                                : Container(
+                        Widget cell = Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 1.5),
+                          child: slot != null
+                              ? GestureDetector(
+                                  onTap: () => onCellTap(wd),
+                                  child: Container(
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: isToday
-                                          ? cs.error.withValues(alpha: 0.08)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: isToday
-                                          ? Border.all(
-                                              color: cs.error.withValues(
-                                                alpha: 0.3,
-                                              ),
-                                              width: 1,
-                                            )
-                                          : null,
+                                      color: _slotBg(slot, context),
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isToday
+                                            ? cs.error
+                                            : _slotBorder(slot, context)
+                                                .withValues(alpha: 0.6),
+                                        width: isToday ? 1.5 : 1,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 2),
+                                    child: Text(
+                                      slot.subjectName
+                                          .split(' ')
+                                          .map((w) =>
+                                              w.isNotEmpty ? w[0] : '')
+                                          .take(3)
+                                          .join(),
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: _slotFg(slot, context),
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
                                   ),
-                          ),
+                                )
+                              : Container(
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: isToday
+                                        ? cs.error.withValues(alpha: 0.08)
+                                        : Colors.transparent,
+                                    borderRadius:
+                                        BorderRadius.circular(6),
+                                    border: isToday
+                                        ? Border.all(
+                                            color: cs.error
+                                                .withValues(alpha: 0.3),
+                                            width: 1,
+                                          )
+                                        : null,
+                                  ),
+                                ),
                         );
+
+                        return scroll
+                            ? SizedBox(width: cellW, child: cell)
+                            : Expanded(child: cell);
                       }),
                     ],
                   ),
@@ -1466,7 +1196,7 @@ class _WeekGridView extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // ── Legend ────────────────────────────────────────────────
+              // Legend
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1481,7 +1211,8 @@ class _WeekGridView extends StatelessWidget {
               Center(
                 child: Text(
                   'Tap a cell to see that day\'s full schedule',
-                  style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                  style:
+                      TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
                 ),
               ),
             ],
@@ -1494,16 +1225,19 @@ class _WeekGridView extends StatelessWidget {
           child: needsHScroll
               ? SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: gridContent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8),
+                  child: SizedBox(
+                    width: totalWidth,
+                    child: buildGrid(scroll: true),
+                  ),
                 )
-              : gridContent,
+              : buildGrid(),
         );
       },
     );
   }
 
-  /// Builds a single header column (day label + date number).
   Widget _buildHeaderColumn(
     int index,
     DateTime date,
@@ -1552,6 +1286,8 @@ class _WeekGridView extends StatelessWidget {
     );
   }
 }
+
+// ── Legend Dot ────────────────────────────────────────────────────────────────
 
 class _LegendDot extends StatelessWidget {
   final Color color;

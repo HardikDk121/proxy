@@ -20,6 +20,10 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.1.4
 
+  # ── PDF Timetable Scanner ─────────────────────────────────────────────────────
+  file_picker: ^8.1.7                  # Native file browser (cross-platform)
+  syncfusion_flutter_pdf: ^28.2.12     # Reliable PDF text extraction
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

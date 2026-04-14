@@ -11,7 +11,7 @@ Future<void> showAddSubjectSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.6),
+    barrierColor: Colors.black.withValues(alpha: 0.6),
     builder: (_) => const _AddSubjectSheet(),
   );
 }
@@ -109,7 +109,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: textSecond.withOpacity(0.25),
+                  color: textSecond.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -124,7 +124,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.15),
+                      color: primaryColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -272,13 +272,13 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
                 Icon(
                   Icons.info_outline_rounded,
                   size: 12,
-                  color: textSecond.withOpacity(0.5),
+                  color: textSecond.withValues(alpha: 0.5),
                 ),
                 const SizedBox(width: 5),
                 Text(
                   'Auto-filled from type. You can override it.',
                   style: TextStyle(
-                    color: textSecond.withOpacity(0.5),
+                    color: textSecond.withValues(alpha: 0.5),
                     fontSize: 11,
                   ),
                 ),
@@ -296,7 +296,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: primaryColor.withOpacity(0.6),
+                  disabledBackgroundColor: primaryColor.withValues(alpha: 0.6),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -366,7 +366,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
           boxShadow: sel
               ? [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.35),
+                    color: primaryColor.withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -389,8 +389,8 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
               type == 'Theory' ? '1 hr' : '2 hrs',
               style: TextStyle(
                 color: sel
-                    ? Colors.black.withOpacity(0.6)
-                    : textSecond.withOpacity(0.45),
+                    ? Colors.black.withValues(alpha: 0.6)
+                    : textSecond.withValues(alpha: 0.45),
                 fontSize: 11,
               ),
             ),
@@ -411,7 +411,7 @@ class _AddSubjectSheetState extends State<_AddSubjectSheet> {
   }) => InputDecoration(
     hintText: hint,
     hintStyle: TextStyle(
-      color: textSecond.withOpacity(0.45),
+      color: textSecond.withValues(alpha: 0.45),
       fontWeight: FontWeight.w400,
     ),
     filled: true,

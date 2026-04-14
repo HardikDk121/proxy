@@ -1,34 +1,22 @@
 // lib/screens/subject_dashboard_screen.dart
+// ─────────────────────────────────────────────────────────────────────────────
+// Subject attendance dashboard — driven entirely by a live Hive [Subject]
+// object passed from the previous screen.  All mutations call
+// [widget.subject.save()] so changes are persisted immediately.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:proxy/models/subject.dart';
 import 'package:proxy/themes/theme.dart'; // exposes AttendanceColors
 
-// ── Static mock data ─────────────────────────────────────────────────────────
-class _MockSubject {
-  String name;
-  String type;
-  double duration;
-  int attended;
-  int total;
-
-  _MockSubject({
-    required this.name,
-    required this.type,
-    required this.duration,
-    required this.attended,
-    required this.total,
-  });
-
-  double get percentage => total == 0 ? 0.0 : (attended / total) * 100;
-  double get hoursAttended => attended * duration;
-  double get totalHours => total * duration;
-  int get missed => total - attended;
-}
-
 // ── Screen ───────────────────────────────────────────────────────────────────
+
 class SubjectDashboardScreen extends StatefulWidget {
-  const SubjectDashboardScreen({super.key});
+  /// The live Hive [Subject] object injected by the calling screen.
+  final Subject subject;
+
+  const SubjectDashboardScreen({super.key, required this.subject});
 
   @override
   State<SubjectDashboardScreen> createState() => _SubjectDashboardScreenState();
@@ -36,8 +24,6 @@ class SubjectDashboardScreen extends StatefulWidget {
 
 class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
     with TickerProviderStateMixin {
-
-  late _MockSubject _subject;
 
   late AnimationController _progressCtrl;
   late AnimationController _cardCtrl;
@@ -48,13 +34,6 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _subject = _MockSubject(
-      name: 'Data Structures',
-      type: 'Theory',
-      duration: 1.0,
-      attended: 22,
-      total: 27,
-    );
     _setupAnimations();
   }
 
@@ -68,7 +47,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
       duration: const Duration(milliseconds: 600),
     );
 
-    _progressAnim = Tween<double>(begin: 0, end: _subject.percentage / 100)
+    _progressAnim = Tween<double>(begin: 0, end: widget.subject.percentage / 100)
         .animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic));
     _fadeAnim = Tween<double>(begin: 0, end: 1)
         .animate(CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut));
@@ -91,8 +70,9 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   void _markPresent() {
     HapticFeedback.mediumImpact();
     setState(() {
-      _subject.attended += 1;
-      _subject.total += 1;
+      widget.subject.attended += 1;
+      widget.subject.total += 1;
+      widget.subject.save(); // persist to Hive box
       _animateProgress();
     });
     _showSnack('✓ Present marked', Theme.of(context).colorScheme.secondary);
@@ -101,7 +81,8 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   void _markAbsent() {
     HapticFeedback.mediumImpact();
     setState(() {
-      _subject.total += 1;
+      widget.subject.total += 1;
+      widget.subject.save(); // persist to Hive box
       _animateProgress();
     });
     _showSnack('✗ Absent marked', Theme.of(context).colorScheme.error);
@@ -109,7 +90,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   void _animateProgress() {
     _progressCtrl.reset();
-    _progressAnim = Tween<double>(begin: 0, end: _subject.percentage / 100)
+    _progressAnim = Tween<double>(begin: 0, end: widget.subject.percentage / 100)
         .animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic));
     _progressCtrl.forward();
   }
@@ -129,39 +110,41 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   // ── Bunk predictor calculations ──────────────────────────────────────────
 
   int get _canBunk {
-    final maxTotal = (_subject.attended / 0.75).floor();
-    final canSkip = maxTotal - _subject.total;
+    final maxTotal = (widget.subject.attended / 0.75).floor();
+    final canSkip = maxTotal - widget.subject.total;
     return canSkip < 0 ? 0 : canSkip;
   }
 
   int get _needsToAttend {
-    if (_subject.percentage >= 75) return 0;
-    final needed = ((0.75 * _subject.total - _subject.attended) / 0.25).ceil();
+    if (widget.subject.percentage >= 75) return 0;
+    final needed =
+        ((0.75 * widget.subject.total - widget.subject.attended) / 0.25).ceil();
     return needed < 0 ? 0 : needed;
   }
 
   double _afterPresent(int n) {
-    if (_subject.total + n == 0) return 0;
-    return ((_subject.attended + n) / (_subject.total + n)) * 100;
+    if (widget.subject.total + n == 0) return 0;
+    return ((widget.subject.attended + n) / (widget.subject.total + n)) * 100;
   }
 
   double _afterAbsent(int n) {
-    if (_subject.total + n == 0) return 0;
-    return (_subject.attended / (_subject.total + n)) * 100;
+    if (widget.subject.total + n == 0) return 0;
+    return (widget.subject.attended / (widget.subject.total + n)) * 100;
   }
+
+  // ── Computed stats ───────────────────────────────────────────────────────
+
+  double get _hoursAttended => widget.subject.attended * widget.subject.durationHours;
+  double get _totalHours    => widget.subject.total    * widget.subject.durationHours;
+  int    get _missed        => widget.subject.total - widget.subject.attended;
 
   // ── Theming helpers ──────────────────────────────────────────────────────
 
-  /// Returns the semantic attendance color from the proxyTheme via
-  /// AttendanceColors — aligns perfectly with colorScheme.secondary (safe),
-  /// AttendanceColors.borderline (amber, no direct M3 slot), and
-  /// colorScheme.error (danger).
-  Color _statusColor(BuildContext context) {
-    return AttendanceColors.forPercentage(_subject.percentage);
-  }
+  Color _statusColor(BuildContext context) =>
+      AttendanceColors.forPercentage(widget.subject.percentage);
 
   String get _statusLabel {
-    final p = _subject.percentage;
+    final p = widget.subject.percentage;
     if (p >= 85) return 'Safe Zone';
     if (p >= 75) return 'On Track';
     return 'Danger Zone';
@@ -239,7 +222,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _subject.name,
+              widget.subject.name,
               style: TextStyle(
                 color: cs.onSurface,
                 fontSize: 18,
@@ -252,10 +235,10 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
             const SizedBox(height: 4),
             Row(
               children: [
-                _TypeChip(type: _subject.type),
+                _TypeChip(type: widget.subject.type),
                 const SizedBox(width: 8),
                 Text(
-                  '${_subject.attended}/${_subject.total} classes',
+                  '${widget.subject.attended}/${widget.subject.total} classes',
                   style: TextStyle(
                     color: cs.onSurfaceVariant,
                     fontSize: 11,
@@ -299,7 +282,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${_subject.percentage.toStringAsFixed(1)}%',
+                        '${widget.subject.percentage.toStringAsFixed(1)}%',
                         style: TextStyle(
                           color: statusColor,
                           fontSize: 22,
@@ -329,23 +312,21 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 _InfoRow(
                   icon: Icons.check_circle_outline_rounded,
                   label: 'Attended',
-                  value: '${_subject.attended} classes',
-                  // Safe/success → secondary (Emerald)
+                  value: '${widget.subject.attended} classes',
                   color: cs.secondary,
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
                   icon: Icons.cancel_outlined,
                   label: 'Missed',
-                  value: '${_subject.missed} classes',
-                  // Danger → error
+                  value: '$_missed classes',
                   color: cs.error,
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
                   icon: Icons.event_note_rounded,
                   label: 'Total',
-                  value: '${_subject.total} classes',
+                  value: '${widget.subject.total} classes',
                   color: cs.onSurfaceVariant,
                 ),
               ],
@@ -366,8 +347,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           child: _StatCard(
             icon: Icons.access_time_rounded,
             label: 'Hrs\nAttended',
-            value: '${_subject.hoursAttended.toStringAsFixed(1)}h',
-            // Generic accent → primary (Indigo)
+            value: '${_hoursAttended.toStringAsFixed(1)}h',
             color: cs.primary,
           ),
         ),
@@ -376,7 +356,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           child: _StatCard(
             icon: Icons.hourglass_bottom_rounded,
             label: 'Total\nHours',
-            value: '${_subject.totalHours.toStringAsFixed(1)}h',
+            value: '${_totalHours.toStringAsFixed(1)}h',
             color: cs.onSurfaceVariant,
           ),
         ),
@@ -385,8 +365,7 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
           child: _StatCard(
             icon: Icons.timer_outlined,
             label: 'Per\nClass',
-            value: '${_subject.duration}h',
-            // Borderline (amber) — no dedicated colorScheme slot
+            value: '${widget.subject.durationHours}h',
             color: AttendanceColors.borderline,
           ),
         ),
@@ -398,19 +377,18 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   Widget _buildStatusBanner(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final safe = _subject.percentage >= 75;
+    final safe = widget.subject.percentage >= 75;
     final icon = safe
         ? (_canBunk > 0 ? Icons.check_circle_rounded : Icons.warning_amber_rounded)
         : Icons.error_rounded;
 
-    // Color logic mirrors AttendanceColors.forPercentage semantics
     final Color color;
     if (!safe) {
-      color = cs.error; // < 75% → danger
+      color = cs.error;
     } else if (_canBunk > 0) {
-      color = cs.secondary; // safe & has buffer → emerald
+      color = cs.secondary;
     } else {
-      color = AttendanceColors.borderline; // edge case → amber
+      color = AttendanceColors.borderline;
     }
 
     final text = safe
@@ -479,7 +457,6 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 child: _AttendanceButton(
                   label: 'Present',
                   icon: Icons.check_rounded,
-                  // Success → secondary (Emerald)
                   color: cs.secondary,
                   onTap: _markPresent,
                 ),
@@ -489,7 +466,6 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 child: _AttendanceButton(
                   label: 'Absent',
                   icon: Icons.close_rounded,
-                  // Danger → error
                   color: cs.error,
                   onTap: _markAbsent,
                 ),
@@ -539,7 +515,6 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
 
   Widget _buildPredictorRow(BuildContext context, String label, double percentage) {
     final cs = Theme.of(context).colorScheme;
-    // ≥ 75% safe → secondary (Emerald), else danger → error
     final color = percentage >= 75 ? cs.secondary : cs.error;
     return Row(
       children: [
@@ -591,11 +566,11 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
-          _DetailRow(label: 'Subject Name',     value: _subject.name),
-          _DetailRow(label: 'Type',             value: _subject.type),
-          _DetailRow(label: 'Class Duration',   value: '${_subject.duration} hours'),
-          _DetailRow(label: 'Classes Attended', value: '${_subject.attended}'),
-          _DetailRow(label: 'Classes Held',     value: '${_subject.total}'),
+          _DetailRow(label: 'Subject Name',     value: widget.subject.name),
+          _DetailRow(label: 'Type',             value: widget.subject.type),
+          _DetailRow(label: 'Class Duration',   value: '${widget.subject.durationHours} hours'),
+          _DetailRow(label: 'Classes Attended', value: '${widget.subject.attended}'),
+          _DetailRow(label: 'Classes Held',     value: '${widget.subject.total}'),
           _DetailRow(label: 'Required Minimum', value: '75%', isLast: true),
         ],
       ),
@@ -607,8 +582,6 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
   void _showOptionsSheet() {
     showModalBottomSheet(
       context: context,
-      // Let the theme's bottomSheetTheme handle background automatically;
-      // set to null so the theme backgroundColor is respected.
       backgroundColor: null,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -644,8 +617,9 @@ class _SubjectDashboardScreenState extends State<SubjectDashboardScreen>
                 onTap: () {
                   Navigator.pop(context);
                   setState(() {
-                    _subject.attended = 0;
-                    _subject.total = 0;
+                    widget.subject.attended = 0;
+                    widget.subject.total = 0;
+                    widget.subject.save(); // persist reset to Hive
                     _animateProgress();
                   });
                 },
@@ -698,7 +672,6 @@ class _TypeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // Lab → primary (Indigo), Theory/others → borderline (Amber)
     final isLab = type == 'Lab';
     final color = isLab ? cs.primary : AttendanceColors.borderline;
     return Container(

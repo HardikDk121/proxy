@@ -11,6 +11,7 @@ import '../models/subject.dart';
 import '../routes/app_routes.dart';
 import '../services/attendance_service.dart';
 import '../widgets/add_subject_screen.dart';
+import '../../main.dart' show themeModeNotifier;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HOME SCREEN
@@ -201,7 +202,7 @@ class _SectionHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: cs.primary.withOpacity(0.12),
+            color: cs.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -261,7 +262,7 @@ class _HeroHeader extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             cs.primaryContainer,
-            cs.primaryContainer.withOpacity(0.6),
+            cs.primaryContainer.withValues(alpha: 0.6),
             cs.surfaceContainerHigh,
           ],
           stops: const [0.0, 0.5, 1.0],
@@ -281,7 +282,7 @@ class _HeroHeader extends StatelessWidget {
                     width: 36, height: 36,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [cs.primary, cs.primary.withOpacity(0.7)],
+                        colors: [cs.primary, cs.primary.withValues(alpha: 0.7)],
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -325,6 +326,8 @@ class _HeroHeader extends StatelessWidget {
                     color: cs.onSurfaceVariant,
                     bgColor: cs.surfaceContainerHigh,
                   ),
+                  const SizedBox(width: 8),
+                  const _ThemeToggleBtn(),
                 ],
               ),
 
@@ -340,7 +343,7 @@ class _HeroHeader extends StatelessWidget {
                       painter: _RingPainter(
                         progress: overallPct / 100,
                         color: color,
-                        trackColor: color.withOpacity(0.12),
+                        trackColor: color.withValues(alpha: 0.12),
                       ),
                       child: Center(
                         child: Column(
@@ -383,9 +386,9 @@ class _HeroHeader extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: color.withOpacity(0.2)),
+                            border: Border.all(color: color.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -411,7 +414,7 @@ class _HeroHeader extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: overallPct / 100,
-                            backgroundColor: color.withOpacity(0.1),
+                            backgroundColor: color.withValues(alpha: 0.1),
                             valueColor: AlwaysStoppedAnimation<Color>(color),
                             minHeight: 5,
                           ),
@@ -421,7 +424,7 @@ class _HeroHeader extends StatelessWidget {
                           'Min required: 75%',
                           style: TextStyle(
                             fontSize: 10,
-                            color: cs.onSurfaceVariant.withOpacity(0.7),
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -659,10 +662,14 @@ class _SubjectCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => Navigator.pushNamed(context, AppRoutes.subjectDashboard),
+          onTap: () => Navigator.pushNamed(
+            context,
+            AppRoutes.subjectDashboard,
+            arguments: subject,
+          ),
           borderRadius: BorderRadius.circular(16),
-          splashColor: cs.primary.withOpacity(0.08),
-          highlightColor: cs.primary.withOpacity(0.04),
+          splashColor: cs.primary.withValues(alpha: 0.08),
+          highlightColor: cs.primary.withValues(alpha: 0.04),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -759,9 +766,9 @@ class _SubjectCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
+                          color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+                          border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
                         ),
                         child: Text(
                           '${subject.percentage.toStringAsFixed(0)}%',
@@ -775,7 +782,7 @@ class _SubjectCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(3),
                         child: LinearProgressIndicator(
                           value: subject.percentage / 100,
-                          backgroundColor: color.withOpacity(0.1),
+                          backgroundColor: color.withValues(alpha: 0.1),
                           valueColor: AlwaysStoppedAnimation<Color>(color),
                           minHeight: 4,
                         ),
@@ -813,12 +820,12 @@ class _TimetableBanner extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                cs.primary.withOpacity(0.12),
-                cs.primary.withOpacity(0.04),
+                cs.primary.withValues(alpha: 0.12),
+                cs.primary.withValues(alpha: 0.04),
               ],
             ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: cs.primary.withOpacity(0.15), width: 0.8),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.15), width: 0.8),
           ),
           child: Row(
             children: [
@@ -855,7 +862,7 @@ class _TimetableBanner extends StatelessWidget {
               ),
               Icon(
                 Icons.arrow_forward_ios_rounded, size: 14,
-                color: cs.primary.withOpacity(0.7),
+                color: cs.primary.withValues(alpha: 0.7),
               ),
             ],
           ),
@@ -897,6 +904,93 @@ class _IconBtn extends StatelessWidget {
         ),
         child: Icon(icon, size: 20, color: color),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  THEME TOGGLE BUTTON
+//  Cycles: system → light → dark → system
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ThemeToggleBtn extends StatelessWidget {
+  const _ThemeToggleBtn();
+
+  /// Returns next mode in the cycle: system → light → dark → system
+  ThemeMode _nextMode(ThemeMode current) {
+    switch (current) {
+      case ThemeMode.system: return ThemeMode.light;
+      case ThemeMode.light:  return ThemeMode.dark;
+      case ThemeMode.dark:   return ThemeMode.system;
+    }
+  }
+
+  /// Icon that represents the CURRENT active mode.
+  IconData _icon(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:  return Icons.light_mode_rounded;
+      case ThemeMode.dark:   return Icons.dark_mode_rounded;
+      case ThemeMode.system: return Icons.brightness_auto_rounded;
+    }
+  }
+
+  /// Tooltip text for accessibility.
+  String _tooltip(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:  return 'Light mode (tap for Dark)';
+      case ThemeMode.dark:   return 'Dark mode (tap for System)';
+      case ThemeMode.system: return 'System mode (tap for Light)';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) {
+        return Tooltip(
+          message: _tooltip(mode),
+          child: GestureDetector(
+            onTap: () => themeModeNotifier.value = _nextMode(mode),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                // Highlight the button when NOT on system mode
+                color: mode == ThemeMode.system
+                    ? cs.surfaceContainerHigh
+                    : cs.primaryContainer,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: mode == ThemeMode.system
+                      ? cs.outlineVariant
+                      : cs.primary.withValues(alpha: 0.4),
+                  width: 0.8,
+                ),
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, animation) => RotationTransition(
+                  turns: animation,
+                  child: FadeTransition(opacity: animation, child: child),
+                ),
+                child: Icon(
+                  _icon(mode),
+                  key: ValueKey(mode),
+                  size: 20,
+                  color: mode == ThemeMode.system
+                      ? cs.onSurfaceVariant
+                      : cs.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

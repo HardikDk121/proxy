@@ -85,7 +85,7 @@ class ProfileScreen extends StatelessWidget {
               minimumSize: const Size(double.infinity, 52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               foregroundColor: cs.error,
-              side: BorderSide(color: cs.error.withOpacity(0.5)),
+              side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
               textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
             onPressed: () {},
@@ -126,8 +126,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs    = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -196,7 +195,7 @@ class SettingsScreen extends StatelessWidget {
               'Proxy v1.0.0',
               style: TextStyle(
                 fontSize: 12,
-                color: cs.onSurfaceVariant.withOpacity(0.5),
+                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
               ),
             ),
           ),

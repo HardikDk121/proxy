@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import '../screens/home_screen.dart';
 import '../screens/not_found_screen.dart';
 import '../screens/time_table_screen.dart';
-// Uncomment as you build each screen:
 // import '../screens/add_subject_screen.dart';
 // import '../screens/subject_detail_screen.dart';
-// import '../screens/bunk_predictor_screen.dart';
+import '../screens/bunk_predictor_screen.dart';
 import 'app_routes.dart';
-import '../screens/subject_screen.dart';
-//import '../models/subject.dart';
+import '../screens/subject_dashboard_screen.dart';
+import '../models/subject.dart';
 class _RouteEntry {
   final String path;
   final Widget Function(RouteSettings settings) builder;
@@ -60,11 +59,11 @@ class RouteGenerator {
         // Replace with: (s) => SubjectDetailScreen(name: s.arguments as String)
 
     route(AppRoutes.bunkPredictor,
-        (_) => const _PlaceholderScreen(title: 'Bunk Predictor'));
+        (_) => const BunkPredictorScreen());
 
     route(AppRoutes.subjectDashboard,
-    (_) => const SubjectDashboardScreen(),
-);
+      (s) => SubjectDashboardScreen(subject: s.arguments as Subject),
+    );
   }
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {

@@ -5,12 +5,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:proxy/themes/theme.dart';
+import 'package:proxy/themes/theme.dart'; // AppTheme.lightTheme / darkTheme
 import 'models/subject.dart';
+import 'models/timetable_slot.dart';
 import 'routes/app_routes.dart';
 import 'routes/route_generator.dart';
 import 'services/attendance_service.dart';
+import 'services/timetable_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+
+// ── Global theme-mode notifier ───────────────────────────────────────────────
+// Any widget in the tree can read/toggle this without a full state-management
+// package.  Pass it down via an InheritedWidget wrapper (ThemeModeProvider).
+final ValueNotifier<ThemeMode> themeModeNotifier =
+    ValueNotifier(ThemeMode.system);
 
 Future<void> main() async {
   // 1️⃣  Must be the very first line — required by async main & plugins.
@@ -24,10 +32,12 @@ Future<void> main() async {
   await Hive.initFlutter();
 
   // 4️⃣  Register every TypeAdapter BEFORE opening boxes that use it.
-  Hive.registerAdapter(SubjectAdapter());
+  Hive.registerAdapter(SubjectAdapter());          // typeId 0
+  Hive.registerAdapter(TimetableSlotAdapter());    // typeId 1
 
-  // 5️⃣  Open the subjects box through the service so we have one owner.
+  // 5️⃣  Open boxes through their services so we have one owner each.
   await AttendanceService.init();
+  await TimetableService.init();
 
   // 6️⃣  Register named routes.
   RouteGenerator.registerRoutes();
@@ -45,13 +55,22 @@ class ProxyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Proxy',
-      debugShowCheckedModeBanner: false,
-      theme: proxyTheme,
-      initialRoute: AppRoutes.home,
-      onGenerateRoute: RouteGenerator.onGenerateRoute,
-      onUnknownRoute: RouteGenerator.onUnknownRoute,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Proxy',
+          debugShowCheckedModeBanner: false,
+          // ── Dual-theme setup ──────────────────────────────────────────────
+          theme:      AppTheme.lightTheme,
+          darkTheme:  AppTheme.darkTheme,
+          themeMode:  mode,             // controlled by themeModeNotifier
+          // ─────────────────────────────────────────────────────────────────
+          initialRoute: AppRoutes.home,
+          onGenerateRoute: RouteGenerator.onGenerateRoute,
+          onUnknownRoute: RouteGenerator.onUnknownRoute,
+        );
+      },
     );
   }
 }
